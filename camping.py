@@ -113,22 +113,25 @@ def _main(parks):
         else:
             emoji = FAILURE_EMOJI
 
-        out.append(
-            "{} {} ({}): {} site(s) available out of {} site(s)".format(
-                emoji, name_of_site, park_id, current, maximum
+        if not args.only_available or current:
+            out.append(
+                "{} {} ({}): {} site(s) available out of {} site(s)".format(
+                    emoji, name_of_site, park_id, current, maximum
+                )
             )
-        )
 
-    if availabilities:
-        print(
-            "There are campsites available from {} to {}!!!".format(
-                args.start_date.strftime(INPUT_DATE_FORMAT),
-                args.end_date.strftime(INPUT_DATE_FORMAT),
+    if not args.no_overall:
+        if availabilities:
+            print(
+                "There are campsites available from {} to {}!!!".format(
+                    args.start_date.strftime(INPUT_DATE_FORMAT),
+                    args.end_date.strftime(INPUT_DATE_FORMAT),
+                )
             )
-        )
-    else:
-        print("There are no campsites available :(")
+        else:
+            print("There are no campsites available :(")
     print("\n".join(out))
+    return availabilities
 
 
 if __name__ == "__main__":
@@ -152,6 +155,21 @@ if __name__ == "__main__":
         action="store_true",
         help="Read list of park ID(s) from stdin instead",
     )
+    parser.add_argument(
+        "--only_available",
+        action="store_true",
+        help="Report only available sites",
+    )
+    parser.add_argument(
+        "--no_overall",
+        action="store_true",
+        help="Do not print overall results line"
+    )
+    parser.add_argument(
+        "--exit_code",
+        action="store_true",
+        help="Exit with code 0 if something is available, with 61 otherwise"
+    )
 
     args = parser.parse_args()
 
@@ -161,7 +179,9 @@ if __name__ == "__main__":
     parks = args.parks or [p.strip() for p in sys.stdin]
 
     try:
-        _main(parks)
+        availabilities = _main(parks)
+        if args.exit_code:
+            sys.exit(0 if availabilities else 61)
     except Exception:
         print("Something went wrong")
         raise
