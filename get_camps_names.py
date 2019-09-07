@@ -6,7 +6,7 @@ import sys
 from connection import Connection as Conn
 
 async def _main(camps, html):
-    camp_names = await Conn.get_names_of_sites(camps)
+    camp_names = await Conn.get_camps_names(camps)
     for camp_id in camps:
         camp_name = camp_names[camp_id]
         if html:

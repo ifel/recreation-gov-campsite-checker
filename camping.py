@@ -64,21 +64,21 @@ def valid_date(s):
         raise argparse.ArgumentTypeError(msg)
 
 
-async def _main(parks):
+async def _main(camps):
     out = []
     availabilities = False
     params = generate_params(args.start_date, args.end_date)
 
-    park_names_future = Conn.get_names_of_sites(parks)
-    parks_infos_future = Conn.get_parks_information(parks, params)
-    parks_infos = await parks_infos_future
-    park_names = await park_names_future
+    camp_names_future = Conn.get_camps_names(camps)
+    camps_infos_future = Conn.get_camps_information(camps, params)
+    camps_infos = await camps_infos_future
+    camps_names = await camp_names_future
 
-    for park_id in parks:
-        park_information = parks_infos[park_id]
-        name_of_site = park_names[park_id]
+    for camp_id in camps:
+        camp_information = camps_infos[camp_id]
+        name_of_camp = camps_names[camp_id]
         current, maximum = get_num_available_sites(
-            park_information, args.start_date, args.end_date
+            camp_information, args.start_date, args.end_date
         )
         if current:
             emoji = SUCCESS_EMOJI
@@ -89,7 +89,7 @@ async def _main(parks):
         if not args.only_available or current:
             out.append(
                 "{} {} ({}): {} site(s) available out of {} site(s)".format(
-                    emoji, name_of_site, park_id, current, maximum
+                    emoji, name_of_camp, camp_id, current, maximum
                 )
             )
 
@@ -120,13 +120,13 @@ if __name__ == "__main__":
         type=valid_date,
     )
     parser.add_argument(
-        dest="parks", metavar="park", nargs="+", help="Park ID(s)", type=int
+        dest="camps", metavar="camp", nargs="+", help="Camp ID(s)", type=int
     )
     parser.add_argument(
         "--stdin",
         "-",
         action="store_true",
-        help="Read list of park ID(s) from stdin instead",
+        help="Read list of camp ID(s) from stdin instead",
     )
     parser.add_argument(
         "--only_available",
@@ -149,10 +149,10 @@ if __name__ == "__main__":
     if args.debug:
         LOG.setLevel(logging.DEBUG)
 
-    parks = args.parks or [p.strip() for p in sys.stdin]
+    camps = args.camps or [p.strip() for p in sys.stdin]
 
     try:
-        availabilities = asyncio.run(_main(parks))
+        availabilities = asyncio.run(_main(camps))
         if args.exit_code:
             sys.exit(0 if availabilities else 61)
     except Exception:

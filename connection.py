@@ -48,35 +48,35 @@ class Connection:
         return resp.json()
 
     @classmethod
-    async def get_park_information(cls, park_id, params):
-        logger.debug("Querying for {} with these params: {}".format(park_id, params))
-        url = "{}{}{}".format(cls.BASE_URL, cls.AVAILABILITY_ENDPOINT, park_id)
-        park_information = await cls.send_request(url, params)
+    async def get_camp_information(cls, camp_id, params):
+        logger.debug("Querying for {} with these params: {}".format(camp_id, params))
+        url = "{}{}{}".format(cls.BASE_URL, cls.AVAILABILITY_ENDPOINT, camp_id)
+        camp_information = await cls.send_request(url, params)
         logger.debug(
             "Information for {}: {}".format(
-                park_id, json.dumps(park_information, indent=1)
+                camp_id, json.dumps(camp_information, indent=1)
             )
         )
 
-        return park_id, park_information
+        return camp_id, camp_information
 
     @classmethod
-    async def get_parks_information(cls, park_ids, params):
-        futures = {cls.get_park_information(pid, params) for pid in park_ids}
+    async def get_camps_information(cls, camp_ids, params):
+        futures = {cls.get_camp_information(pid, params) for pid in camp_ids}
         done, pending = await asyncio.wait(futures)
         return {r.result()[0]: r.result()[1] for r in done}
 
     @classmethod
-    async def get_names_of_sites(cls, park_ids):
-        futures = {cls.get_name_of_site(pid) for pid in park_ids}
+    async def get_camps_names(cls, camp_ids):
+        futures = {cls.get_camp_name(pid) for pid in camp_ids}
         done, pending = await asyncio.wait(futures)
         return {r.result()[0]: r.result()[1] for r in done}
 
     @classmethod
-    async def get_name_of_site(cls, park_id):
-        url = "{}{}{}".format(cls.BASE_URL, cls.MAIN_PAGE_ENDPOINT, park_id)
+    async def get_camp_name(cls, camp_id):
+        url = "{}{}{}".format(cls.BASE_URL, cls.MAIN_PAGE_ENDPOINT, camp_id)
         resp = await cls.send_request(url, {})
-        return park_id, resp["campground"]["facility_name"]
+        return camp_id, resp["campground"]["facility_name"]
 
     @classmethod
     def camp_url(cls, camp_id):
