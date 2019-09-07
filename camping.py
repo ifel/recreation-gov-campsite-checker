@@ -87,11 +87,23 @@ async def _main(camps):
             emoji = FAILURE_EMOJI
 
         if not args.only_available or current:
-            out.append(
-                "{} {} ({}): {} site(s) available out of {} site(s)".format(
-                    emoji, name_of_camp, camp_id, current, maximum
+            if args.html:
+                out.append(
+                    "- {} <a href=\"{}\">{}</a> ({}): {} site(s) available out of {} site(s)".format(
+                        emoji,
+                        Conn.camp_availability_url(camp_id),
+                        name_of_camp,
+                        camp_id,
+                        current,
+                        maximum
+                    )
                 )
-            )
+            else:
+                out.append(
+                    "{} {} ({}): {} site(s) available out of {} site(s)".format(
+                        emoji, name_of_camp, camp_id, current, maximum
+                    )
+                )
 
     if not args.no_overall:
         if availabilities:
@@ -142,6 +154,11 @@ if __name__ == "__main__":
         "--exit_code",
         action="store_true",
         help="Exit with code 0 if something is available, with 61 otherwise"
+    )
+    parser.add_argument(
+        "--html",
+        action="store_true",
+        help="Print in html format",
     )
 
     args = parser.parse_args()

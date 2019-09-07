@@ -3,11 +3,11 @@
 iter () {
 	# test sites 234608 234691
 	date
-	result=`python camping.py --start-date $START_DATE --end-date $END_DATE --no_overall --exit_code --only_available $CAMPS_IDS`
+	result=`python camping.py --start-date $START_DATE --end-date $END_DATE --html --no_overall --exit_code --only_available $CAMPS_IDS`
 	avail=$?
 	echo "$result"
 	if [ "$avail" -eq 0 ]; then
-		echo "$result" | sed -E -e 's/^([^ ]+ )([^\(]+)\(([0-9]+)(\):.*)/\1<a href="https:\/\/www.recreation.gov\/camping\/campgrounds\/\3\/availability">\2<\/a>(\3\4/g' | telegram-send -g --stdin --format html
+		echo "$result" | telegram-send -g --stdin --format html
 		sleep 900
 	fi
 

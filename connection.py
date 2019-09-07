@@ -81,3 +81,7 @@ class Connection:
     @classmethod
     def camp_url(cls, camp_id):
         return os.path.join(cls.BASE_URL, f"camping/campgrounds/{camp_id}/")
+
+    @classmethod
+    def camp_availability_url(cls, camp_id):
+        return os.path.join(cls.camp_url(camp_id), "availability")
