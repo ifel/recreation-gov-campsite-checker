@@ -17,9 +17,6 @@ sh = logging.StreamHandler()
 sh.setFormatter(formatter)
 LOG.addHandler(sh)
 
-
-INPUT_DATE_FORMAT = "%Y-%m-%d"
-
 SUCCESS_EMOJI = "🏕"
 FAILURE_EMOJI = "❌"
 
@@ -43,14 +40,6 @@ def get_num_available_sites(resp, start_date, end_date):
             num_available += 1
             LOG.debug("Available site {}: {}".format(num_available, json.dumps(site, indent=1)))
     return num_available, maximum
-
-
-def valid_date(s):
-    try:
-        return datetime.strptime(s, INPUT_DATE_FORMAT)
-    except ValueError:
-        msg = "Not a valid date: '{0}'.".format(s)
-        raise argparse.ArgumentTypeError(msg)
 
 
 async def _main(camps):
@@ -99,8 +88,8 @@ async def _main(camps):
         if availabilities:
             print(
                 "There are campsites available from {} to {}!!!".format(
-                    args.start_date.strftime(INPUT_DATE_FORMAT),
-                    args.end_date.strftime(INPUT_DATE_FORMAT),
+                    args.start_date.strftime(date_helper.INPUT_DATE_FORMAT),
+                    args.end_date.strftime(date_helper.INPUT_DATE_FORMAT),
                 )
             )
         else:
@@ -113,13 +102,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--debug", "-d", action="store_true", help="Debug log level")
     parser.add_argument(
-        "--start-date", required=True, help="Start date [YYYY-MM-DD]", type=valid_date
+        "--start-date", required=True, help="Start date [YYYY-MM-DD]", type=date_helper.valid_date
     )
     parser.add_argument(
         "--end-date",
         required=True,
         help="End date [YYYY-MM-DD]. You expect to leave this day, not stay the night.",
-        type=valid_date,
+        type=date_helper.valid_date,
     )
     parser.add_argument(
         dest="camps", metavar="camp", nargs="+", help="Camp ID(s)", type=int
