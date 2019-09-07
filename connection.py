@@ -20,6 +20,7 @@ class Connection:
     BASE_URL = "https://www.recreation.gov"
     AVAILABILITY_ENDPOINT = "/api/camps/availability/campground/"
     MAIN_PAGE_ENDPOINT = "/api/camps/campgrounds/"
+    CAMP_NAMES = {}
 
     def __init__(self, start_date, end_date):
         self.start_date = start_date
@@ -88,9 +89,11 @@ class Connection:
 
     @classmethod
     async def get_camp_name(cls, camp_id):
-        url = "{}{}{}".format(cls.BASE_URL, cls.MAIN_PAGE_ENDPOINT, camp_id)
-        resp = await cls.send_request(url, {})
-        return camp_id, resp["campground"]["facility_name"]
+        if camp_id not in cls.CAMP_NAMES:
+            url = "{}{}{}".format(cls.BASE_URL, cls.MAIN_PAGE_ENDPOINT, camp_id)
+            resp = await cls.send_request(url, {})
+            cls.CAMP_NAMES[camp_id] = resp["campground"]["facility_name"]
+        return camp_id, cls.CAMP_NAMES[camp_id]
 
     @classmethod
     def camp_url(cls, camp_id):
