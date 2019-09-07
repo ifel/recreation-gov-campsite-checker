@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import os
 import requests
 from fake_useragent import UserAgent
 
@@ -76,3 +77,7 @@ class Connection:
         url = "{}{}{}".format(cls.BASE_URL, cls.MAIN_PAGE_ENDPOINT, park_id)
         resp = await cls.send_request(url, {})
         return park_id, resp["campground"]["facility_name"]
+
+    @classmethod
+    def camp_url(cls, camp_id):
+        return os.path.join(cls.BASE_URL, f"camping/campgrounds/{camp_id}/")

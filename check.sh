@@ -45,6 +45,6 @@ token = $TELEGRAM_TOKEN
 chat_id = $TELEGRAM_CHAT_ID
 END
 
-echo "Crawler started to find a place from $START_DATE to $END_DATE in $CAMPS_IDS" | telegram-send --stdin -g
+echo -e "Crawler started to find a place from $START_DATE to $END_DATE in:\n$(python get_camps_names.py --html $CAMPS_IDS)" | telegram-send --stdin -g --html
 
 while :; do iter; done
