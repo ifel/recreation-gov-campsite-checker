@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import asyncio
 import argparse
 import json
 import logging
@@ -35,11 +36,13 @@ def format_date(date_object):
 
 
 def generate_params(start, end):
-    params = {"start_date": format_date(start), "end_date": format_date(end)}
-    return params
+    return {
+        "start_date": format_date(start),
+        "end_date": format_date(end)
+    }
 
 
-def send_request(url, params):
+async def send_request(url, params):
     resp = requests.get(url, params=params, headers=headers)
     if resp.status_code != 200:
         raise RuntimeError(
@@ -51,15 +54,35 @@ def send_request(url, params):
     return resp.json()
 
 
-def get_park_information(park_id, params):
+async def get_park_information(park_id, params):
+    LOG.debug("Querying for {} with these params: {}".format(park_id, params))
     url = "{}{}{}".format(BASE_URL, AVAILABILITY_ENDPOINT, park_id)
-    return send_request(url, params)
+    park_information = await send_request(url, params)
+    LOG.debug(
+        "Information for {}: {}".format(
+            park_id, json.dumps(park_information, indent=1)
+        )
+    )
+
+    return park_id, park_information
 
 
-def get_name_of_site(park_id):
+async def get_parks_information(park_ids, params):
+    futures = {get_park_information(pid, params) for pid in park_ids}
+    done, pending = await asyncio.wait(futures)
+    return {r.result()[0]: r.result()[1] for r in done}
+
+
+async def get_names_of_sites(park_ids):
+    futures = {get_name_of_site(pid) for pid in park_ids}
+    done, pending = await asyncio.wait(futures)
+    return {r.result()[0]: r.result()[1] for r in done}
+
+
+async def get_name_of_site(park_id):
     url = "{}{}{}".format(BASE_URL, MAIN_PAGE_ENDPOINT, park_id)
-    resp = send_request(url, {})
-    return resp["campground"]["facility_name"]
+    resp = await send_request(url, {})
+    return park_id, resp["campground"]["facility_name"]
 
 
 def get_num_available_sites(resp, start_date, end_date):
@@ -91,19 +114,19 @@ def valid_date(s):
         raise argparse.ArgumentTypeError(msg)
 
 
-def _main(parks):
+async def _main(parks):
     out = []
     availabilities = False
+    params = generate_params(args.start_date, args.end_date)
+
+    park_names_future = get_names_of_sites(parks)
+    parks_infos_future = get_parks_information(parks, params)
+    parks_infos = await parks_infos_future
+    park_names = await park_names_future
+
     for park_id in parks:
-        params = generate_params(args.start_date, args.end_date)
-        LOG.debug("Querying for {} with these params: {}".format(park_id, params))
-        park_information = get_park_information(park_id, params)
-        LOG.debug(
-            "Information for {}: {}".format(
-                park_id, json.dumps(park_information, indent=1)
-            )
-        )
-        name_of_site = get_name_of_site(park_id)
+        park_information = parks_infos[park_id]
+        name_of_site = park_names[park_id]
         current, maximum = get_num_available_sites(
             park_information, args.start_date, args.end_date
         )
@@ -179,7 +202,7 @@ if __name__ == "__main__":
     parks = args.parks or [p.strip() for p in sys.stdin]
 
     try:
-        availabilities = _main(parks)
+        availabilities = asyncio.run(_main(parks))
         if args.exit_code:
             sys.exit(0 if availabilities else 61)
     except Exception:
