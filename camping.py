@@ -27,8 +27,10 @@ INPUT_DATE_FORMAT = "%Y-%m-%d"
 SUCCESS_EMOJI = "🏕"
 FAILURE_EMOJI = "❌"
 
-headers = {"User-Agent": UserAgent().random}
-
+headers = {
+    "User-Agent": UserAgent().random,
+    'Accept-Encoding': 'identity, deflate, compress, gzip'
+}
 
 def format_date(date_object):
     date_formatted = datetime.strftime(date_object, "%Y-%m-%dT00:00:00Z")
