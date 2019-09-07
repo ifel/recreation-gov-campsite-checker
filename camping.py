@@ -7,6 +7,7 @@ import logging
 import sys
 from datetime import datetime, timedelta
 
+import date_helper
 from connection import Connection as Conn
 
 
@@ -23,25 +24,13 @@ SUCCESS_EMOJI = "🏕"
 FAILURE_EMOJI = "❌"
 
 
-def format_date(date_object):
-    date_formatted = datetime.strftime(date_object, "%Y-%m-%dT00:00:00Z")
-    return date_formatted
-
-
-def generate_params(start, end):
-    return {
-        "start_date": format_date(start),
-        "end_date": format_date(end)
-    }
-
-
 def get_num_available_sites(resp, start_date, end_date):
     maximum = resp["count"]
 
     num_available = 0
     num_days = (end_date - start_date).days
     dates = [end_date - timedelta(days=i) for i in range(1, num_days + 1)]
-    dates = set(format_date(i) for i in dates)
+    dates = set(date_helper.format_date(i) for i in dates)
     for site in resp["campsites"].values():
         available = bool(len(site["availabilities"]))
         for date, status in site["availabilities"].items():
@@ -67,10 +56,11 @@ def valid_date(s):
 async def _main(camps):
     out = []
     availabilities = False
-    params = generate_params(args.start_date, args.end_date)
 
-    camp_names_future = Conn.get_camps_names(camps)
-    camps_infos_future = Conn.get_camps_information(camps, params)
+    conn = Conn(args.start_date, args.end_date)
+
+    camp_names_future = conn.get_camps_names(camps)
+    camps_infos_future = conn.get_camps_information(camps)
     camps_infos = await camps_infos_future
     camps_names = await camp_names_future
 

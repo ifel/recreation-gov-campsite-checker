@@ -5,6 +5,8 @@ import os
 import requests
 from fake_useragent import UserAgent
 
+import date_helper
+
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +20,20 @@ class Connection:
     BASE_URL = "https://www.recreation.gov"
     AVAILABILITY_ENDPOINT = "/api/camps/availability/campground/"
     MAIN_PAGE_ENDPOINT = "/api/camps/campgrounds/"
+
+    def __init__(self, start_date, end_date):
+        self._start_date = start_date
+        self._end_date = end_date
+        self._request_params = None
+
+    @property
+    def request_params(self):
+        if not self._request_params:
+            self._request_params = {
+                "start_date": date_helper.format_date(self._start_date),
+                "end_date": date_helper.format_date(self._end_date)
+            }
+        return self._request_params
 
     @classmethod
     def get_session(cls):
@@ -47,11 +63,10 @@ class Connection:
             )
         return resp.json()
 
-    @classmethod
-    async def get_camp_information(cls, camp_id, params):
-        logger.debug("Querying for {} with these params: {}".format(camp_id, params))
-        url = "{}{}{}".format(cls.BASE_URL, cls.AVAILABILITY_ENDPOINT, camp_id)
-        camp_information = await cls.send_request(url, params)
+    async def get_camp_information(self, camp_id):
+        logger.debug("Querying for {} with these params: {}".format(camp_id, self.request_params))
+        url = "{}{}{}".format(self.BASE_URL, self.AVAILABILITY_ENDPOINT, camp_id)
+        camp_information = await self.send_request(url, self.request_params)
         logger.debug(
             "Information for {}: {}".format(
                 camp_id, json.dumps(camp_information, indent=1)
@@ -60,9 +75,8 @@ class Connection:
 
         return camp_id, camp_information
 
-    @classmethod
-    async def get_camps_information(cls, camp_ids, params):
-        futures = {cls.get_camp_information(pid, params) for pid in camp_ids}
+    async def get_camps_information(self, camp_ids):
+        futures = {self.get_camp_information(pid) for pid in camp_ids}
         done, pending = await asyncio.wait(futures)
         return {r.result()[0]: r.result()[1] for r in done}
 
