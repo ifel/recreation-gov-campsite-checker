@@ -8,7 +8,9 @@ import sys
 from datetime import datetime, timedelta
 
 import date_helper
+
 from connection import Connection as Conn
+from user_request import UserRequest
 
 
 LOG = logging.getLogger(__name__)
@@ -17,84 +19,15 @@ sh = logging.StreamHandler()
 sh.setFormatter(formatter)
 LOG.addHandler(sh)
 
-SUCCESS_EMOJI = "🏕"
-FAILURE_EMOJI = "❌"
 
-
-def get_num_available_sites(resp, start_date, end_date):
-    maximum = resp["count"]
-
-    num_available = 0
-    num_days = (end_date - start_date).days
-    dates = [end_date - timedelta(days=i) for i in range(1, num_days + 1)]
-    dates = set(date_helper.format_date(i) for i in dates)
-    for site in resp["campsites"].values():
-        available = bool(len(site["availabilities"]))
-        for date, status in site["availabilities"].items():
-            if date not in dates:
-                continue
-            if status != "Available":
-                available = False
-                break
-        if available:
-            num_available += 1
-            LOG.debug("Available site {}: {}".format(num_available, json.dumps(site, indent=1)))
-    return num_available, maximum
-
-
-async def _main(camps):
-    out = []
+async def main(request_str: str, only_available: bool, no_overall: bool, html: bool) -> None:
     availabilities = False
+    user_requests = UserRequest.make_user_requests(request_str, only_available, no_overall, html)
+    for res in asyncio.as_completed([x.process_request() for x in user_requests]):
+        avail, out = await res
+        availabilities = availabilities or avail
+        print(out)
 
-    conn = Conn(args.start_date, args.end_date)
-
-    camp_names_future = conn.get_camps_names(camps)
-    camps_infos_future = conn.get_camps_information(camps)
-    camps_infos = await camps_infos_future
-    camps_names = await camp_names_future
-
-    for camp_id in camps:
-        camp_information = camps_infos[camp_id]
-        name_of_camp = camps_names[camp_id]
-        current, maximum = get_num_available_sites(
-            camp_information, args.start_date, args.end_date
-        )
-        if current:
-            emoji = SUCCESS_EMOJI
-            availabilities = True
-        else:
-            emoji = FAILURE_EMOJI
-
-        if not args.only_available or current:
-            if args.html:
-                out.append(
-                    "- {} <a href=\"{}\">{}</a> ({}): {} site(s) available out of {} site(s)".format(
-                        emoji,
-                        Conn.camp_availability_url(camp_id),
-                        name_of_camp,
-                        camp_id,
-                        current,
-                        maximum
-                    )
-                )
-            else:
-                out.append(
-                    "{} {} ({}): {} site(s) available out of {} site(s)".format(
-                        emoji, name_of_camp, camp_id, current, maximum
-                    )
-                )
-
-    if not args.no_overall:
-        if availabilities:
-            print(
-                "There are campsites available from {} to {}!!!".format(
-                    args.start_date.strftime(date_helper.INPUT_DATE_FORMAT),
-                    args.end_date.strftime(date_helper.INPUT_DATE_FORMAT),
-                )
-            )
-        else:
-            print("There are no campsites available :(")
-    print("\n".join(out))
     return availabilities
 
 
@@ -102,22 +35,26 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--debug", "-d", action="store_true", help="Debug log level")
     parser.add_argument(
-        "--start-date", required=True, help="Start date [YYYY-MM-DD]", type=date_helper.valid_date
+        "--start-date", help="Start date [YYYY-MM-DD]", type=date_helper.valid_date
     )
     parser.add_argument(
         "--end-date",
-        required=True,
         help="End date [YYYY-MM-DD]. You expect to leave this day, not stay the night.",
         type=date_helper.valid_date,
     )
     parser.add_argument(
-        dest="camps", metavar="camp", nargs="+", help="Camp ID(s)", type=int
+        "--camps", dest="camps", metavar="camp", nargs="+", help="Camp ID(s)", type=str
     )
     parser.add_argument(
         "--stdin",
         "-",
         action="store_true",
         help="Read list of camp ID(s) from stdin instead",
+    )
+    parser.add_argument(
+        "--request",
+        help="Struct of requests as: start_date1..end_date1:id1,id2;start_date2..end_date2:id3,id4 \n" +
+             "Dates should be in format YYYY-MM-DD. End date - you expect to leave this day, not stay the night"
     )
     parser.add_argument(
         "--only_available",
@@ -145,10 +82,27 @@ if __name__ == "__main__":
     if args.debug:
         LOG.setLevel(logging.DEBUG)
 
-    camps = args.camps or [p.strip() for p in sys.stdin]
-
+    request = ""
+    if args.request and args.camps:
+        raise ValueError("You try to use request and camps methods both, you should chose one")
+    if args.request:
+        if args.start_date:
+            LOG.warning("start_date does not make sense for the request")
+        if args.end_date:
+            LOG.warning("end_date does not make sense for the request")
+        if args.stdin:
+            LOG.warning("stdin option does not make sense for the request")
+        request = args.request
+    else:
+        if args.stdin:
+            camps = [p.strip() for p in sys.stdin]
+        if not args.start_date:
+            raise ValueError("start_date is not specified")
+        if not args.end_date:
+            raise ValueError("end_date is not specified")
+        request = f"{str(args.start_date).split(' ')[0]}..{str(args.end_date).split(' ')[0]}:{','.join(camps)}"
     try:
-        availabilities = asyncio.run(_main(camps))
+        availabilities = asyncio.run(main(request, args.only_available, args.no_overall, args.html))
         if args.exit_code:
             sys.exit(0 if availabilities else 61)
     except Exception:

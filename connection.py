@@ -22,16 +22,16 @@ class Connection:
     MAIN_PAGE_ENDPOINT = "/api/camps/campgrounds/"
 
     def __init__(self, start_date, end_date):
-        self._start_date = start_date
-        self._end_date = end_date
+        self.start_date = start_date
+        self.end_date = end_date
         self._request_params = None
 
     @property
     def request_params(self):
         if not self._request_params:
             self._request_params = {
-                "start_date": date_helper.format_date(self._start_date),
-                "end_date": date_helper.format_date(self._end_date)
+                "start_date": date_helper.format_date(self.start_date),
+                "end_date": date_helper.format_date(self.end_date)
             }
         return self._request_params
 
