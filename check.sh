@@ -1,6 +1,6 @@
 #!/bin/sh
 
-function iter {
+iter () {
 	# test sites 234608 234691
 	date
 	result=`python camping.py --start-date $START_DATE --end-date $END_DATE --no_overall --exit_code --only_available $CAMPS_IDS`

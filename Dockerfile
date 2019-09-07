@@ -5,11 +5,9 @@
 # ENV TELEGRAM_TOKEN
 # ENV TELEGRAM_CHAT_ID
 
-FROM python:3.7-alpine
+FROM python:3.7
 COPY . /root
 WORKDIR /root
-RUN apk add --no-cache --virtual .build-deps gcc musl-dev libffi-dev openssl-dev python3-dev
 RUN pip install --upgrade pip
 RUN pip install -r /root/requirements.txt
-RUN apk del .build-deps gcc musl-dev libffi-dev openssl-dev python3-dev
-ENTRYPOINT ["/root/check.sh"]
+CMD ["/root/check.sh"]
