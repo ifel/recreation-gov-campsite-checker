@@ -42,8 +42,8 @@ def generate_params(start, end):
     }
 
 
-async def send_request(url, params):
-    resp = requests.get(url, params=params, headers=headers)
+async def send_request(session, url, params):
+    resp = session.get(url, params=params, headers=headers)
     if resp.status_code != 200:
         raise RuntimeError(
             "failedRequest",
@@ -54,10 +54,10 @@ async def send_request(url, params):
     return resp.json()
 
 
-async def get_park_information(park_id, params):
+async def get_park_information(session, park_id, params):
     LOG.debug("Querying for {} with these params: {}".format(park_id, params))
     url = "{}{}{}".format(BASE_URL, AVAILABILITY_ENDPOINT, park_id)
-    park_information = await send_request(url, params)
+    park_information = await send_request(session, url, params)
     LOG.debug(
         "Information for {}: {}".format(
             park_id, json.dumps(park_information, indent=1)
@@ -67,21 +67,21 @@ async def get_park_information(park_id, params):
     return park_id, park_information
 
 
-async def get_parks_information(park_ids, params):
-    futures = {get_park_information(pid, params) for pid in park_ids}
+async def get_parks_information(session, park_ids, params):
+    futures = {get_park_information(session, pid, params) for pid in park_ids}
     done, pending = await asyncio.wait(futures)
     return {r.result()[0]: r.result()[1] for r in done}
 
 
-async def get_names_of_sites(park_ids):
-    futures = {get_name_of_site(pid) for pid in park_ids}
+async def get_names_of_sites(session, park_ids):
+    futures = {get_name_of_site(session, pid) for pid in park_ids}
     done, pending = await asyncio.wait(futures)
     return {r.result()[0]: r.result()[1] for r in done}
 
 
-async def get_name_of_site(park_id):
+async def get_name_of_site(session, park_id):
     url = "{}{}{}".format(BASE_URL, MAIN_PAGE_ENDPOINT, park_id)
-    resp = await send_request(url, {})
+    resp = await send_request(session, url, {})
     return park_id, resp["campground"]["facility_name"]
 
 
@@ -119,8 +119,20 @@ async def _main(parks):
     availabilities = False
     params = generate_params(args.start_date, args.end_date)
 
-    park_names_future = get_names_of_sites(parks)
-    parks_infos_future = get_parks_information(parks, params)
+    session = requests.session()
+    session.mount(
+        'https://',
+        requests.adapters.HTTPAdapter(
+            pool_connections=10,
+            pool_maxsize=200,
+            max_retries=3
+        )
+    )
+    if not session:
+        raise RuntimeError('Could not create session object')
+
+    park_names_future = get_names_of_sites(session, parks)
+    parks_infos_future = get_parks_information(session, parks, params)
     parks_infos = await parks_infos_future
     park_names = await park_names_future
 
