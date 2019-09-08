@@ -6,12 +6,51 @@ This script scrapes the https://recreation.gov website for campsite availabiliti
 
 ## Example Usage
 ```
-$ python camping.py --start-date 2018-07-20 --end-date 2018-07-23 232448 232450 232447 232770
+# Old way
+$ python camping.py crawl --start-date 2018-07-20 --end-date 2018-07-23 232448 232450 232447 232770
 ❌ TUOLUMNE MEADOWS: 0 site(s) available out of 148 site(s)
 🏕 LOWER PINES: 11 site(s) available out of 73 site(s)
 ❌ UPPER PINES: 0 site(s) available out of 235 site(s)
 ❌ BASIN MONTANA CAMPGROUND: 0 site(s) available out of 30 site(s)
+
+# Using request
+$ python recreation-gov-campsite-checker/camping.py crawl --exit_code --request "2019-10-11..2019-10-13:232448,232450,232447,232770;2019-11-18..2019-11-21:232448,232450,232447,232770"
+There are campsites available from 2019-11-18 to 2019-11-21!!!
+❌ TUOLUMNE MEADOWS (232448): 0 site(s) available out of 21 site(s)
+❌ LOWER PINES (232450): 0 site(s) available out of 75 site(s)
+🏕 UPPER PINES (232447): 142 site(s) available out of 240 site(s)
+❌ BASIN MONTANA CAMPGROUND (232770): 0 site(s) available out of 30 site(s)
+
+There are no campsites available from 2019-10-11 to 2019-10-13 :(
+❌ TUOLUMNE MEADOWS (232448): 0 site(s) available out of 21 site(s)
+❌ LOWER PINES (232450): 0 site(s) available out of 75 site(s)
+❌ UPPER PINES (232447): 0 site(s) available out of 240 site(s)
+❌ BASIN MONTANA CAMPGROUND (232770): 0 site(s) available out of 30 site(s)
+
+# Get info of what we're looking for:
+$ python recreation-gov-campsite-checker/camping.py crawl_info --request "2019-10-11..2019-10-13:232448,232450,232447,232770;2019-11-18..2019-11-21:232448,232450,232447,232770"
+Looking for a place from 2019-11-18 to 2019-11-21 in:
+- UPPER PINES
+- TUOLUMNE MEADOWS
+- LOWER PINES
+- BASIN MONTANA CAMPGROUND
+
+Looking for a place from 2019-10-11 to 2019-10-13 in:
+- UPPER PINES
+- TUOLUMNE MEADOWS
+- BASIN MONTANA CAMPGROUND
+- LOWER PINES
 ```
+
+The script also accepts additional options:
+- crawl command:
+  - --html - print output with html formatting, useful for telegram
+  - --only_available - print only available sites
+  - --no_overall - if provided, prints out only camps info, no summary line
+  - --exit_code - if something is found, exit code is 0, otherwise 61
+
+- crawl_info
+  - --html - print output with html formatting, useful for telegram
 
 You can also read from stdin. Define a file (e.g. `parks.txt`) with IDs like this:
 ```
