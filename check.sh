@@ -3,7 +3,7 @@
 iter () {
 	# test sites 234608 234691
 	date
-	result=`python camping.py --start-date $START_DATE --end-date $END_DATE --html --no_overall --exit_code --only_available $CAMPS_IDS`
+	result=`python camping.py crawl --exit_code --only_available --html --request $REQUEST`
 	avail=$?
 	echo "$result"
 	if [ "$avail" -eq 0 ]; then
@@ -14,19 +14,9 @@ iter () {
 	sleep 60
 }
 
-if [ -z "$START_DATE" ]; then
-	echo "ENV START_DATE var was not provided"
+if [ -z "$REQUEST" ]; then
+	echo "ENV var REQUEST was not provided"
 	exit 62
-fi
-
-if [ -z	"$END_DATE" ]; then
-	echo "ENV END_DATE var was not provided"
-	exit 63
-fi
-
-if [ -z "$CAMPS_IDS" ]; then
-	echo "ENV CAMPS_IDS var was not provided"
-	exit 64
 fi
 
 if [ -z "$TELEGRAM_TOKEN" ]; then
@@ -45,6 +35,7 @@ token = $TELEGRAM_TOKEN
 chat_id = $TELEGRAM_CHAT_ID
 END
 
-echo -e "Crawler started to find a place from $START_DATE to $END_DATE in:\n$(python get_camps_names.py --html $CAMPS_IDS)" | telegram-send --stdin -g --html
+LOOKUP_INFO=$(python camping.py crawl_info --html --request $REQUEST)
+echo -e "Crawler started\n$LOOKUP_INFO" | telegram-send --stdin -g --html
 
 while :; do iter; done
