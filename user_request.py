@@ -114,3 +114,13 @@ class UserRequest:
         if out:
             result += "\n"
         return availabilities, result
+
+    async def get_camps_names(self) -> str:
+        out = f"Looking for a place from {self._conn.start_date.date()} to {self._conn.end_date.date()} in:\n"
+        camp_names = await self._conn.get_camps_names(self._camp_ids)
+        for camp_id, camp_name in camp_names.items():
+            if self._html:
+                out += f"- <a href=\"{self._conn.camp_url(camp_id)}\">{camp_name}</a> ({camp_id})\n"
+            else:
+                out += f"- {camp_name}\n"
+        return out
