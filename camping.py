@@ -82,7 +82,15 @@ if __name__ == "__main__":
         default=15 * 60,
         help="Do not recheck available for this amount of secs, default: %(default)s",
     )
-
+    parser_crawl_loop.add_argument(
+        "--telegram_token",
+        help="Send messages to telegram using this token"
+    )
+    parser_crawl_loop.add_argument(
+        "--telegram_chat_id",
+        help="Send messages to telegram chat with this id"
+    )
+    
     args = parser.parse_args()
 
     if args.debug:
@@ -110,10 +118,15 @@ if __name__ == "__main__":
 
     only_available = False
     no_overall = False
+    telegram_token = ""
+    telegram_chat_id = ""
     if args.cmd in ["crawl", "crawl_loop"]:
         only_available = args.only_available
         no_overall = args.no_overall
-    crawler = crawl.Crawler(request, only_available, no_overall, args.html)
+    if args.cmd == "crawl_loop":
+        telegram_token = args.telegram_token
+        telegram_chat_id = args.telegram_chat_id
+    crawler = crawl.Crawler(request, only_available, no_overall, args.html, telegram_token, telegram_chat_id)
 
     if args.cmd == "crawl":
         try:
