@@ -19,11 +19,14 @@ class Crawler:
         self._user_requests = UserRequest.make_user_requests(request_str, only_available, no_overall, html)
         self._telegram_config: str = self._gen_telegram_config(telegram_token, telegram_chat_id)
         self._telegram_html = html
+        self._sent_into_at = dt.fromtimestamp(0)
 
-    async def crawl_loop(self, check_freq, dont_recheck_avail_for) -> None:
+    async def crawl_loop(self, check_freq, dont_recheck_avail_for, send_info_every) -> None:
         sleep_time: int
-        await self.crawl_info()
         while True:
+            if self._sent_into_at < dt.now() - timedelta(hours=send_info_every):
+                await self.crawl_info()
+                self._sent_into_at = dt.now()
             availabilities = await self.crawl(dont_recheck_avail_for)
             sleep_time = check_freq
             logging.debug(f"Sleeping for {sleep_time} seconds before the next iteration")

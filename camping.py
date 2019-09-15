@@ -90,7 +90,13 @@ if __name__ == "__main__":
         "--telegram_chat_id",
         help="Send messages to telegram chat with this id"
     )
-    
+    parser_crawl_loop.add_argument(
+        "--send_info_every",
+        type=int,
+        default=24,
+        help="Send info of active checks every (default: %(default)s) hours",
+    )
+
     args = parser.parse_args()
 
     if args.debug:
@@ -138,7 +144,9 @@ if __name__ == "__main__":
             raise
     elif args.cmd == "crawl_loop":
         try:
-            availabilities = asyncio.run(crawler.crawl_loop(args.check_freq, args.dont_recheck_avail_for))
+            availabilities = asyncio.run(
+                crawler.crawl_loop(args.check_freq, args.dont_recheck_avail_for, args.send_info_every)
+            )
             if args.exit_code:
                 sys.exit(0 if availabilities else 61)
         except Exception:
