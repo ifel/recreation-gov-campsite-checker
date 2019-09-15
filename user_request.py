@@ -5,7 +5,7 @@ from typing import List, Tuple
 import date_helper
 from connection import Connection
 
-from datetime import timedelta
+from datetime import timedelta, datetime as dt
 
 
 logger = logging.getLogger(__name__)
@@ -25,6 +25,7 @@ class UserRequest:
         self._only_available = only_available
         self._no_overall = no_overall
         self._html = html
+        self.available_at = dt.fromtimestamp(0)
 
     @classmethod
     def _make_user_request(cls, request_str: str, only_available: bool, no_overall: bool, html: bool): # -> UserRequest:
@@ -59,6 +60,8 @@ class UserRequest:
             if available:
                 num_available += 1
                 logger.debug("Available site {}: {}".format(num_available, json.dumps(site, indent=1)))
+        if num_available > 0:
+            self.available_at = dt.now()
         return num_available, maximum
 
     async def process_request(self) -> Tuple[bool, str]:

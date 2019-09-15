@@ -22,9 +22,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="cmd")
     parser_crawl = subparsers.add_parser("crawl")
+    parser_crawl_loop = subparsers.add_parser("crawl_loop")
     parser_crawl_info = subparsers.add_parser("crawl_info")
 
-    for sub_parser in [parser_crawl, parser_crawl_info]:
+    for sub_parser in [parser_crawl, parser_crawl_loop, parser_crawl_info]:
         sub_parser.add_argument("--debug", "-d", action="store_true", help="Debug log level")
         sub_parser.add_argument(
             "--start-date", help="Start date [YYYY-MM-DD]", type=date_helper.valid_date
@@ -53,20 +54,33 @@ if __name__ == "__main__":
             action="store_true",
             help="Print in html format",
         )
-    parser_crawl.add_argument(
-        "--only_available",
-        action="store_true",
-        help="Report only available sites",
+    for sub_parser in [parser_crawl, parser_crawl_loop, parser_crawl_info]:
+        sub_parser.add_argument(
+            "--only_available",
+            action="store_true",
+            help="Report only available sites",
+        )
+        sub_parser.add_argument(
+            "--no_overall",
+            action="store_true",
+            help="Do not print overall results line"
+        )
+        sub_parser.add_argument(
+            "--exit_code",
+            action="store_true",
+            help="Exit with code 0 if something is available, with 61 otherwise"
+        )
+    parser_crawl_loop.add_argument(
+        "--check_freq",
+        type=int,
+        default=1 * 60,
+        help="Sleep time in secs between checks, default: %(default)s",
     )
-    parser_crawl.add_argument(
-        "--no_overall",
-        action="store_true",
-        help="Do not print overall results line"
-    )
-    parser_crawl.add_argument(
-        "--exit_code",
-        action="store_true",
-        help="Exit with code 0 if something is available, with 61 otherwise"
+    parser_crawl_loop.add_argument(
+        "--dont_recheck_avail_for",
+        type=int,
+        default=15 * 60,
+        help="Do not recheck available for this amount of secs, default: %(default)s",
     )
 
     args = parser.parse_args()
@@ -94,15 +108,30 @@ if __name__ == "__main__":
             raise ValueError("end_date is not specified")
         request = f"{args.start_date.date()}..{args.end_date.date()}:{','.join(camps)}"
 
+    only_available = False
+    no_overall = False
+    if args.cmd in ["crawl", "crawl_loop"]:
+        only_available = args.only_available
+        no_overall = args.no_overall
+    crawler = crawl.Crawler(request, only_available, no_overall, args.html)
+
     if args.cmd == "crawl":
         try:
-            availabilities = asyncio.run(crawl.crawl(request, args.only_available, args.no_overall, args.html))
+            availabilities = asyncio.run(crawler.crawl())
+            if args.exit_code:
+                sys.exit(0 if availabilities else 61)
+        except Exception:
+            print("Something went wrong")
+            raise
+    elif args.cmd == "crawl_loop":
+        try:
+            availabilities = asyncio.run(crawler.crawl_loop(args.check_freq, args.dont_recheck_avail_for))
             if args.exit_code:
                 sys.exit(0 if availabilities else 61)
         except Exception:
             print("Something went wrong")
             raise
     elif args.cmd == "crawl_info":
-        asyncio.run(crawl.crawl_info(request, args.html))
+        asyncio.run(crawler.crawl_info())
     else:
         raise ValueError("Unknown command")
