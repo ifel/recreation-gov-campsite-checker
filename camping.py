@@ -9,33 +9,14 @@ from datetime import datetime, timedelta
 
 import date_helper
 
+import crawl
 from connection import Connection as Conn
-from user_request import UserRequest
-
 
 LOG = logging.getLogger(__name__)
 formatter = logging.Formatter("%(asctime)s - %(process)s - %(levelname)s - %(message)s")
 sh = logging.StreamHandler()
 sh.setFormatter(formatter)
 LOG.addHandler(sh)
-
-
-async def crawl(request_str: str, only_available: bool, no_overall: bool, html: bool) -> None:
-    availabilities = False
-    user_requests = UserRequest.make_user_requests(request_str, only_available, no_overall, html)
-    for res in asyncio.as_completed([x.process_request() for x in user_requests]):
-        avail, out = await res
-        availabilities = availabilities or avail
-        print(out)
-
-    return availabilities
-
-
-async def crawl_info(request_str: str, html: bool) -> None:
-    user_requests = UserRequest.make_user_requests(request_str, False, False, html)
-    for res in asyncio.as_completed([x.get_camps_names() for x in user_requests]):
-        print(await res)
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -115,13 +96,13 @@ if __name__ == "__main__":
 
     if args.cmd == "crawl":
         try:
-            availabilities = asyncio.run(crawl(request, args.only_available, args.no_overall, args.html))
+            availabilities = asyncio.run(crawl.crawl(request, args.only_available, args.no_overall, args.html))
             if args.exit_code:
                 sys.exit(0 if availabilities else 61)
         except Exception:
             print("Something went wrong")
             raise
     elif args.cmd == "crawl_info":
-        asyncio.run(crawl_info(request, args.html))
+        asyncio.run(crawl.crawl_info(request, args.html))
     else:
         raise ValueError("Unknown command")
