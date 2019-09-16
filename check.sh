@@ -15,4 +15,4 @@ if [ -z "$TELEGRAM_CHAT_ID" ]; then
 	exit 66
 fi
 
-python camping.py crawl_loop --exit_code --only_available --html --request $REQUEST --telegram_token "$TELEGRAM_TOKEN" --telegram_chat_id "$TELEGRAM_CHAT_ID" --check_freq $CHECK_FREQ --dont_recheck_avail_for $DONT_RECHECK_AVAIL_FOR --send_info_every $SEND_INFO_EVERY
+python camping.py crawl_loop --exit_code --only_available --html --request $REQUEST --telegram_token "$TELEGRAM_TOKEN" --telegram_chat_id "$TELEGRAM_CHAT_ID" --check_freq $CHECK_FREQ --dont_recheck_avail_for $DONT_RECHECK_AVAIL_FOR --send_info_every $SEND_INFO_EVERY 2>&1

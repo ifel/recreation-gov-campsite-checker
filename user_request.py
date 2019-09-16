@@ -8,9 +8,6 @@ from connection import Connection
 from datetime import timedelta, datetime as dt
 
 
-logger = logging.getLogger(__name__)
-
-
 class UserRequest:
     SUCCESS_EMOJI = "🏕"
     FAILURE_EMOJI = "❌"
@@ -26,6 +23,7 @@ class UserRequest:
         self._no_overall = no_overall
         self._html = html
         self.available_at = dt.fromtimestamp(0)
+        self._logger = logging.getLogger(self.__class__.__name__)
 
     @classmethod
     def _make_user_request(cls, request_str: str, only_available: bool, no_overall: bool, html: bool): # -> UserRequest:
@@ -59,7 +57,7 @@ class UserRequest:
                     break
             if available:
                 num_available += 1
-                logger.debug("Available site {}: {}".format(num_available, json.dumps(site, indent=1)))
+                self._logger.debug("Available site {}: {}".format(num_available, json.dumps(site, indent=1)))
         if num_available > 0:
             self.available_at = dt.now()
         return num_available, maximum

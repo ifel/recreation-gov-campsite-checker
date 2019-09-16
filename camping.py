@@ -12,11 +12,13 @@ import date_helper
 import crawl
 from connection import Connection as Conn
 
-LOG = logging.getLogger(__name__)
-formatter = logging.Formatter("%(asctime)s - %(process)s - %(levelname)s - %(message)s")
-sh = logging.StreamHandler()
-sh.setFormatter(formatter)
-LOG.addHandler(sh)
+
+def setup_logging(level):
+    logging.basicConfig(
+        level=level,
+        format="[%(asctime)s] %(levelname)s [%(name)s.%(funcName)s:%(lineno)d] %(message)s",
+    )
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -27,6 +29,7 @@ if __name__ == "__main__":
 
     for sub_parser in [parser_crawl, parser_crawl_loop, parser_crawl_info]:
         sub_parser.add_argument("--debug", "-d", action="store_true", help="Debug log level")
+        sub_parser.add_argument("--quiet", "-q", action="store_true", help="Warning log level")
         sub_parser.add_argument(
             "--start-date", help="Start date [YYYY-MM-DD]", type=date_helper.valid_date
         )
@@ -98,20 +101,24 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-
-    if args.debug:
-        LOG.setLevel(logging.DEBUG)
+    logging_level = logging.INFO
+    if args.quiet:
+        logging_level = logging.WARNING
+    elif args.debug:
+        logging_level = logging.DEBUG
+    setup_logging(logging_level)
+    logger = logging.getLogger(__name__)
 
     request = ""
     if args.request and args.camps:
         raise ValueError("You try to use request and camps methods both, you should chose one")
     if args.request:
         if args.start_date:
-            LOG.warning("start_date does not make sense for the request")
+            logger.warning("start_date does not make sense for the request")
         if args.end_date:
-            LOG.warning("end_date does not make sense for the request")
+            logger.warning("end_date does not make sense for the request")
         if args.stdin:
-            LOG.warning("stdin option does not make sense for the request")
+            logger.warning("stdin option does not make sense for the request")
         request = args.request
     else:
         if args.stdin:
@@ -139,8 +146,8 @@ if __name__ == "__main__":
             availabilities = asyncio.run(crawler.crawl())
             if args.exit_code:
                 sys.exit(0 if availabilities else 61)
-        except Exception:
-            print("Something went wrong")
+        except Exception as e:
+            logger.error(f"Something went wrong: {str(e)}")
             raise
     elif args.cmd == "crawl_loop":
         try:
@@ -149,8 +156,8 @@ if __name__ == "__main__":
             )
             if args.exit_code:
                 sys.exit(0 if availabilities else 61)
-        except Exception:
-            print("Something went wrong")
+        except Exception as e:
+            logger.error(f"Something went wrong: {str(e)}")
             raise
     elif args.cmd == "crawl_info":
         asyncio.run(crawler.crawl_info())

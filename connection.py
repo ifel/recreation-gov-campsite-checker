@@ -8,9 +8,6 @@ from fake_useragent import UserAgent
 import date_helper
 
 
-logger = logging.getLogger(__name__)
-
-
 class Connection:
     SESSION = None
     HEADERS = {
@@ -26,6 +23,7 @@ class Connection:
         self.start_date = start_date
         self.end_date = end_date
         self._request_params = None
+        self._logger = logging.getLogger(self.__class__.__name__)
 
     @property
     def request_params(self):
@@ -65,10 +63,10 @@ class Connection:
         return resp.json()
 
     async def get_camp_information(self, camp_id):
-        logger.debug("Querying for {} with these params: {}".format(camp_id, self.request_params))
+        self._logger.debug("Querying for {} with these params: {}".format(camp_id, self.request_params))
         url = "{}{}{}".format(self.BASE_URL, self.AVAILABILITY_ENDPOINT, camp_id)
         camp_information = await self.send_request(url, self.request_params)
-        logger.debug(
+        self._logger.debug(
             "Information for {}: {}".format(
                 camp_id, json.dumps(camp_information, indent=1)
             )
