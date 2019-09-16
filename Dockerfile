@@ -4,6 +4,11 @@
 # ENV TELEGRAM_CHAT_ID
 
 FROM python:3.7
+
+ENV CHECK_FREQ=60
+ENV DONT_RECHECK_AVAIL_FOR=900
+ENV SEND_INFO_EVERY=24
+
 COPY . /root
 WORKDIR /root
 RUN pip install --upgrade pip
