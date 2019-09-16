@@ -40,6 +40,51 @@ Looking for a place from 2019-10-11 to 2019-10-13 in:
 - TUOLUMNE MEADOWS
 - BASIN MONTANA CAMPGROUND
 - LOWER PINES
+
+# Get info in the loop, and send info to telegram chat. Once it's started, it sends the info of the user requests to the chat, and then sends this info every $send_info_every (by default 24) hours. Once it finds anything, it sends the info to the chat, and will not try to find an availability for that user request within next $dont_recheck_avail_for seconds (15 minutes by default).
+
+$ python recreation-gov-campsite-checker/camping.py crawl_loop --exit_code --only_available --html --request 2019-08-30..2019-09-02:233116,231959,233118,232491,272229,233359,232083,232874,232875,232876,232769,232768;2019-09-30..2019-10-02:233116,231959,233118,232491,272229,233359,232083,232874,232875,232876,232769,232768 --dont_recheck_avail_for 900 --telegram_token "abc" --telegram_chat_id "123"
+[2019-09-15 20:59:08,924] INFO [Crawler._gen_telegram_config:64] Generating telegram config
+[2019-09-15 20:59:08,925] INFO [Crawler.crawl_loop:28] Time to get search info
+Looking for a place from 2019-08-30 to 2019-09-02 in:
+- <a href="https://www.recreation.gov/camping/campgrounds/231959/">PLASKETT CREEK CAMPGROUND</a> (231959)
+- <a href="https://www.recreation.gov/camping/campgrounds/232874/">WILLIAM KENT CAMPGROUND</a> (232874)
+- <a href="https://www.recreation.gov/camping/campgrounds/233118/">PONDEROSA CAMPGROUND</a> (233118)
+- <a href="https://www.recreation.gov/camping/campgrounds/232768/">Nevada Beach Campground and Day Use Pavilion</a> (232768)
+- <a href="https://www.recreation.gov/camping/campgrounds/233359/">Point Reyes National Seashore Campground</a> (233359)
+- <a href="https://www.recreation.gov/camping/campgrounds/232769/">FALLEN LEAF CAMPGROUND</a> (232769)
+- <a href="https://www.recreation.gov/camping/campgrounds/232083/">SUNSET-UNION VALLEY</a> (232083)
+- <a href="https://www.recreation.gov/camping/campgrounds/272229/">BICENTENNIAL CAMPGROUND</a> (272229)
+- <a href="https://www.recreation.gov/camping/campgrounds/232876/">MEEKS BAY</a> (232876)
+- <a href="https://www.recreation.gov/camping/campgrounds/233116/">KIRK CREEK CAMPGROUND</a> (233116)
+- <a href="https://www.recreation.gov/camping/campgrounds/232491/">KIRBY COVE CAMPGROUND</a> (232491)
+- <a href="https://www.recreation.gov/camping/campgrounds/232875/">KASPIAN CAMPGROUND</a> (232875)
+Looking for a place from 2019-09-30 to 2019-10-02 in:
+- <a href="https://www.recreation.gov/camping/campgrounds/232768/">Nevada Beach Campground and Day Use Pavilion</a> (232768)
+- <a href="https://www.recreation.gov/camping/campgrounds/232769/">FALLEN LEAF CAMPGROUND</a> (232769)
+- <a href="https://www.recreation.gov/camping/campgrounds/232083/">SUNSET-UNION VALLEY</a> (232083)
+- <a href="https://www.recreation.gov/camping/campgrounds/233359/">Point Reyes National Seashore Campground</a> (233359)
+- <a href="https://www.recreation.gov/camping/campgrounds/233116/">KIRK CREEK CAMPGROUND</a> (233116)
+- <a href="https://www.recreation.gov/camping/campgrounds/232491/">KIRBY COVE CAMPGROUND</a> (232491)
+- <a href="https://www.recreation.gov/camping/campgrounds/272229/">BICENTENNIAL CAMPGROUND</a> (272229)
+- <a href="https://www.recreation.gov/camping/campgrounds/232876/">MEEKS BAY</a> (232876)
+- <a href="https://www.recreation.gov/camping/campgrounds/232874/">WILLIAM KENT CAMPGROUND</a> (232874)
+- <a href="https://www.recreation.gov/camping/campgrounds/232875/">KASPIAN CAMPGROUND</a> (232875)
+- <a href="https://www.recreation.gov/camping/campgrounds/233118/">PONDEROSA CAMPGROUND</a> (233118)
+- <a href="https://www.recreation.gov/camping/campgrounds/231959/">PLASKETT CREEK CAMPGROUND</a> (231959)
+
+[2019-09-15 20:59:10,967] INFO [Crawler.crawl_loop:31] Getting availabilities
+There are no campsites available from 2019-08-30 to 2019-09-02 :(
+
+There are campsites available from 2019-09-30 to 2019-10-02!!!
+- 🏕 <a href="https://www.recreation.gov/camping/campgrounds/231959/availability">PLASKETT CREEK CAMPGROUND</a> (231959): 3 site(s) available out of 46 site(s)
+- 🏕 <a href="https://www.recreation.gov/camping/campgrounds/233359/availability">Point Reyes National Seashore Campground</a> (233359): 21 site(s) available out of 65 site(s)
+- 🏕 <a href="https://www.recreation.gov/camping/campgrounds/232874/availability">WILLIAM KENT CAMPGROUND</a> (232874): 61 site(s) available out of 81 site(s)
+- 🏕 <a href="https://www.recreation.gov/camping/campgrounds/232875/availability">KASPIAN CAMPGROUND</a> (232875): 8 site(s) available out of 9 site(s)
+- 🏕 <a href="https://www.recreation.gov/camping/campgrounds/232876/availability">MEEKS BAY</a> (232876): 23 site(s) available out of 40 site(s)
+- 🏕 <a href="https://www.recreation.gov/camping/campgrounds/232769/availability">FALLEN LEAF CAMPGROUND</a> (232769): 112 site(s) available out of 208 site(s)
+- 🏕 <a href="https://www.recreation.gov/camping/campgrounds/232768/availability">Nevada Beach Campground and Day Use Pavilion</a> (232768): 4 site(s) available out of 56 site(s)
+
 ```
 
 The script also accepts additional options:
@@ -49,8 +94,18 @@ The script also accepts additional options:
   - --no_overall - if provided, prints out only camps info, no summary line
   - --exit_code - if something is found, exit code is 0, otherwise 61
 
-- crawl_info
+- crawl_info command:
   - --html - print output with html formatting, useful for telegram
+
+- crawl_loop command. It accepts all the crawl accepts plus:
+  - --check_freq - Sleep time in secs between checks, default: 60
+  - --dont_recheck_avail_for - Do not recheck available for this amount of secs, default: 900
+  - --telegram_token - Send messages to telegram using this token
+  - --telegram_chat_id - Send messages to telegram chat with this id
+  - --send_info_every - Send info of active checks every (default: 24) hours
+
+Send info to Telegram.
+You must specify telegram_token and telegram_chat_id both.
 
 You can also read from stdin. Define a file (e.g. `parks.txt`) with IDs like this:
 ```
