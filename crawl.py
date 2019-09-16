@@ -37,11 +37,11 @@ class Crawler:
     async def crawl(self, skip_avails_less_than: int = 15 * 60) -> None:
         availabilities = False
         threshold = dt.now() - timedelta(seconds=skip_avails_less_than)
-        req_futures = [x.process_request() for x in self._user_requests if x.available_at < threshold]
-        self._logger.debug(f"Getting availability for {len(req_futures)} user requests")
+        requests_above_threshold = [x for x in self._user_requests if x.available_at < threshold]
+        futures = [x.process_request() for x in sorted(requests_above_threshold, key=lambda us: us.start_date)]
+        self._logger.debug(f"Getting availability for {len(futures)} user requests")
         all_out: str = ""
-        for res in asyncio.as_completed(req_futures):
-            avail, out = await res
+        for avail, out in await asyncio.gather(*futures):
             availabilities = availabilities or avail
             print(out)
             all_out += out
@@ -52,8 +52,9 @@ class Crawler:
 
     async def crawl_info(self) -> None:
         info: str = ""
-        for res in asyncio.as_completed([x.get_camps_names() for x in self._user_requests]):
-            info += await res
+        futures = [x.get_camps_names() for x in sorted(self._user_requests, key=lambda us: us.start_date)]
+        for res in await asyncio.gather(*futures):
+            info += res
         print(info)
         await self._telegram_send(info)
 

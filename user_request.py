@@ -18,12 +18,14 @@ class UserRequest:
             date_helper.valid_date(start_date),
             date_helper.valid_date(end_date)
         )
+        self.start_date = start_date
         self._camp_ids: List[str] = camp_ids
         self._only_available = only_available
         self._no_overall = no_overall
         self._html = html
         self.available_at = dt.fromtimestamp(0)
         self._logger = logging.getLogger(self.__class__.__name__)
+        self._camp_names = {}
 
     @classmethod
     def _make_user_request(cls, request_str: str, only_available: bool, no_overall: bool, html: bool): # -> UserRequest:
@@ -66,7 +68,7 @@ class UserRequest:
         out: List[str] = []
         availabilities: bool = False
 
-        camp_names_future = self._conn.get_camps_names(self._camp_ids)
+        camp_names_future = self.camp_names()
         camps_infos_future = self._conn.get_camps_information(self._camp_ids)
         camps_infos = await camps_infos_future
         camps_names = await camp_names_future
@@ -118,10 +120,15 @@ class UserRequest:
 
     async def get_camps_names(self) -> str:
         out = f"Looking for a place from {self._conn.start_date.date()} to {self._conn.end_date.date()} in:\n"
-        camp_names = await self._conn.get_camps_names(self._camp_ids)
+        camp_names = await self.camp_names()
         for camp_id, camp_name in camp_names.items():
             if self._html:
                 out += f"- <a href=\"{self._conn.camp_url(camp_id)}\">{camp_name}</a> ({camp_id})\n"
             else:
                 out += f"- {camp_name}\n"
         return out
+
+    async def camp_names(self):
+        if not self._camp_names:
+            self._camp_names = await self._conn.get_camps_names(self._camp_ids)
+        return self._camp_names
