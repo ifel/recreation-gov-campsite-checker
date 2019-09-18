@@ -6,6 +6,7 @@ import json
 import logging
 import sys
 from datetime import datetime, timedelta
+from logging.handlers import RotatingFileHandler
 
 import date_helper
 
@@ -13,11 +14,19 @@ import crawl
 from connection import Connection as Conn
 
 
-def setup_logging(level):
-    logging.basicConfig(
-        level=level,
-        format="[%(asctime)s] %(levelname)s [%(name)s.%(funcName)s:%(lineno)d] %(message)s",
+def setup_logging(level, log_file):
+    if log_file:
+        handler = RotatingFileHandler(log_file, maxBytes=10*1024*1024, backupCount=10)
+    else:
+        handler = logging.StreamHandler()
+
+    handler.setFormatter(
+        logging.Formatter("[%(asctime)s] %(levelname)s [%(name)s.%(funcName)s:%(lineno)d] %(message)s")
     )
+
+    root_logger = logging.getLogger()
+    root_logger.setLevel(level)
+    root_logger.addHandler(handler)
 
 
 if __name__ == "__main__":
@@ -56,6 +65,11 @@ if __name__ == "__main__":
             "--html",
             action="store_true",
             help="Print in html format",
+        )
+        sub_parser.add_argument(
+            "-l",
+            "--log",
+            help="Log file",
         )
     for sub_parser in [parser_crawl, parser_crawl_loop, parser_crawl_info]:
         sub_parser.add_argument(
@@ -106,7 +120,7 @@ if __name__ == "__main__":
         logging_level = logging.WARNING
     elif args.debug:
         logging_level = logging.DEBUG
-    setup_logging(logging_level)
+    setup_logging(logging_level, args.log)
     logger = logging.getLogger(__name__)
 
     request = ""
