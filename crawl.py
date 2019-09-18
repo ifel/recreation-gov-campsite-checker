@@ -43,10 +43,10 @@ class Crawler:
         all_out: str = ""
         for avail, out in await asyncio.gather(*futures):
             availabilities = availabilities or avail
-            print(out)
             all_out += out
         if availabilities:
-            await self._telegram_send(all_out)
+            await self._send_to_telegram_or_print(all_out)
+        self._logger.info(all_out)
 
         return availabilities
 
@@ -55,8 +55,8 @@ class Crawler:
         futures = [x.get_camps_names() for x in sorted(self._user_requests, key=lambda us: us.start_date)]
         for res in await asyncio.gather(*futures):
             info += res
-        print(info)
-        await self._telegram_send(info)
+        self._logger.info(info)
+        await self._send_to_telegram_or_print(info)
 
     def _gen_telegram_config(self, token, chat_id) -> str:
         tmp_path: str = ""
@@ -67,7 +67,7 @@ class Crawler:
                print(f"[telegram]\ntoken = {token}\nchat_id = {chat_id}\n", file=fh)
         return tmp_path
 
-    async def _telegram_send(self, message: str):
+    async def _send_to_telegram_or_print(self, message: str):
         if self._telegram_config:
             self._logger.debug("Sending a message to telegram chat")
             telegram_send.send(
@@ -75,3 +75,5 @@ class Crawler:
                 conf=self._telegram_config,
                 parse_mode="html" if self._telegram_html else "text"
             )
+        else:
+            print(message)
