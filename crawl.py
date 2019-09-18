@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 
 import asyncio
+import datetime
 import logging
 import os
 import time
 import tempfile
-from datetime import timedelta, datetime as dt
+
+from typing import List
 
 import telegram_send
 from user_request import UserRequest
@@ -18,16 +20,16 @@ class Crawler:
         self._user_requests = UserRequest.make_user_requests(request_str, only_available, no_overall, html)
         self._telegram_config: str = self._gen_telegram_config(telegram_token, telegram_chat_id)
         self._telegram_html = html
-        self._sent_into_at = dt.fromtimestamp(0)
+        self._sent_into_at = datetime.datetime.fromtimestamp(0)
         
 
     async def crawl_loop(self, check_freq, dont_recheck_avail_for, send_info_every) -> None:
         sleep_time: int
         while True:
-            if self._sent_into_at < dt.now() - timedelta(hours=send_info_every):
+            if self._sent_into_at < datetime.datetime.now() - datetime.timedelta(hours=send_info_every):
                 self._logger.info("Time to get search info")
                 await self.crawl_info()
-                self._sent_into_at = dt.now()
+                self._sent_into_at = datetime.datetime.now()
             self._logger.info("Getting availabilities")
             availabilities = await self.crawl(dont_recheck_avail_for)
             sleep_time = check_freq
@@ -36,8 +38,8 @@ class Crawler:
 
     async def crawl(self, skip_avails_less_than: int = 15 * 60) -> None:
         availabilities = False
-        threshold = dt.now() - timedelta(seconds=skip_avails_less_than)
-        requests_above_threshold = [x for x in self._user_requests if x.available_at < threshold]
+        threshold = datetime.datetime.now() - datetime.timedelta(seconds=skip_avails_less_than)
+        requests_above_threshold = [x for x in self._user_requests_in_future() if x.available_at < threshold]
         futures = [x.process_request() for x in sorted(requests_above_threshold, key=lambda us: us.start_date)]
         self._logger.debug(f"Getting availability for {len(futures)} user requests")
         all_out: str = ""
@@ -52,11 +54,18 @@ class Crawler:
 
     async def crawl_info(self) -> None:
         info: str = ""
-        futures = [x.get_camps_names() for x in sorted(self._user_requests, key=lambda us: us.start_date)]
+        futures = [x.get_camps_names() for x in sorted(self._user_requests_in_future(), key=lambda us: us.start_date)]
         for res in await asyncio.gather(*futures):
             info += res
         self._logger.info(info)
         await self._send_to_telegram_or_print(info)
+
+    def _user_requests_in_future(self) -> List[UserRequest]:
+        tomorrow = datetime.datetime.combine(
+            datetime.date.today() + datetime.timedelta(days=1),
+            datetime.datetime.min.time()
+        )
+        return [x for x in self._user_requests if datetime.datetime.strptime(x.start_date, '%Y-%m-%d') >= tomorrow]
 
     def _gen_telegram_config(self, token, chat_id) -> str:
         tmp_path: str = ""
