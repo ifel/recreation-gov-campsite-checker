@@ -38,7 +38,7 @@ class UserRequest:
     def make_user_requests(cls, requests_str: str, only_available: bool,
                            no_overall: bool, html: bool): # -> List[UserRequest]:
         ret: List[UserRequest] = []
-        for request_str in requests_str.split(";"):
+        for request_str in requests_str.rstrip(";").split(";"):
             ret.append(cls._make_user_request(request_str, only_available, no_overall, html))
         return ret
 
