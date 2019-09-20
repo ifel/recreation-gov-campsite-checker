@@ -93,6 +93,22 @@ if __name__ == "__main__":
             type=user_request.UseType.validate,
             help=f"Skip certain use types, default: '%(default)s'. Possible options: {user_request.UseType.all_names()}"
         )
+        skip_campsite_types_def = [
+            user_request.CampsiteType.MANAGEMENT,
+            user_request.CampsiteType.WALK_TO,
+            user_request.CampsiteType.RV_NONELECTRIC,
+            user_request.CampsiteType.GROUP_SHELTER_NONELECTRIC,
+            user_request.CampsiteType.GROUP_HIKE_TO,
+            user_request.CampsiteType.HIKE_TO,
+            user_request.CampsiteType.GROUP_STANDARD_NONELECTRIC,
+            user_request.CampsiteType.BOAT_IN,
+        ]
+        sub_parser.add_argument(
+            "--skip_campsite_types",
+            default=f"{','.join([x.name for x in skip_campsite_types_def])}",
+            type=user_request.CampsiteType.validate_multi,
+            help=f"Skip certain site types, default: '%(default)s'. Possible options: {user_request.CampsiteType.all_names()}"
+        )
     parser_crawl_loop.add_argument(
         "--check_freq",
         type=int,
@@ -154,14 +170,16 @@ if __name__ == "__main__":
     telegram_token = ""
     telegram_chat_id = ""
     skip_use_type = None
+    skip_campsite_types = None
     if args.cmd in ["crawl", "crawl_loop"]:
         only_available = args.only_available
         no_overall = args.no_overall
         skip_use_type = args.skip_use_type
+        skip_campsite_types = args.skip_campsite_types
     if args.cmd == "crawl_loop":
         telegram_token = args.telegram_token
         telegram_chat_id = args.telegram_chat_id
-    crawler = crawl.Crawler(request, only_available, no_overall, args.html, telegram_token, telegram_chat_id, skip_use_type)
+    crawler = crawl.Crawler(request, only_available, no_overall, args.html, telegram_token, telegram_chat_id, skip_use_type, skip_campsite_types)
 
     if args.cmd == "crawl":
         try:

@@ -10,14 +10,15 @@ import tempfile
 from typing import List, Optional
 
 import telegram_send
-from user_request import UserRequest, UseType
+from user_request import UserRequest, UseType, CampsiteType
 
 
 class Crawler:
     def __init__(self, request_str: str, only_available: bool, no_overall: bool, html: bool,
-                 telegram_token: str, telegram_chat_id: str, skip_use_type: Optional[UseType]):
+                 telegram_token: str, telegram_chat_id: str, skip_use_type: Optional[UseType],
+                 skip_campsite_types: Optional[CampsiteType]):
         self._logger = logging.getLogger(self.__class__.__name__)
-        self._user_requests = UserRequest.make_user_requests(request_str, only_available, no_overall, html, skip_use_type)
+        self._user_requests = UserRequest.make_user_requests(request_str, only_available, no_overall, html, skip_use_type, skip_campsite_types)
         self._telegram_config: str = self._gen_telegram_config(telegram_token, telegram_chat_id)
         self._telegram_html = html
         self._sent_into_at = datetime.datetime.fromtimestamp(0)

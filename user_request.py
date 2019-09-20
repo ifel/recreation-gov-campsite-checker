@@ -29,12 +29,49 @@ class UseType(Enum):
         return [x.name for x in cls] + [""]
 
 
+class CampsiteType(Enum):
+    STANDARD_NONELECTRIC = auto()
+    STANDARD_ELECTRIC = auto()
+    TENT_ONLY_NONELECTRIC = auto()
+    CABIN_NONELECTRIC = auto()
+    CABIN_ELECTRIC = auto()
+
+    MANAGEMENT = auto()
+    WALK_TO = auto()
+    RV_NONELECTRIC = auto()
+    GROUP_SHELTER_NONELECTRIC = auto()
+    GROUP_HIKE_TO = auto()
+    HIKE_TO = auto()
+    GROUP_STANDARD_NONELECTRIC = auto()
+    BOAT_IN = auto()
+
+    @classmethod
+    def validate_multi(cls, v):
+        if v == "":
+            return None
+        values = [x.strip().replace(" ", "_") for x in v.split(",")]
+        return [cls.validate(x) for x in values]
+
+    @classmethod
+    def validate(cls, v):
+        match = [x for x in cls if v.lower() == x.name.lower()]
+        if match:
+            return match[0]
+        msg = "Not a valid date: '{0}'.".format(v)
+        raise argparse.ArgumentTypeError(msg)
+
+    @classmethod
+    def all_names(cls):
+        return [x.name for x in cls] + [""]
+
+
 class UserRequest:
     SUCCESS_EMOJI = "🏕"
     FAILURE_EMOJI = "❌"
 
     def __init__(self, start_date: str, end_date: str, camp_ids: List[int],
-                 only_available: bool, no_overall: bool, html: bool, skip_use_type: Optional[UseType]):
+                 only_available: bool, no_overall: bool, html: bool, skip_use_type: Optional[UseType],
+                 skip_campsite_types: Optional[CampsiteType]):
         self._conn: Connection = Connection(
             date_helper.valid_date(start_date),
             date_helper.valid_date(end_date)
@@ -48,20 +85,23 @@ class UserRequest:
         self._logger = logging.getLogger(self.__class__.__name__)
         self._camp_names = {}
         self._skip_use_type = skip_use_type
+        self._skip_campsite_types_names: List[str] = [x.name.upper() for x in skip_campsite_types] if skip_use_type else []
 
     @classmethod
-    def _make_user_request(cls, request_str: str, only_available: bool, no_overall: bool, html: bool, skip_use_type: Optional[UseType]): # -> UserRequest:
+    def _make_user_request(cls, request_str: str, only_available: bool, no_overall: bool, html: bool,
+                           skip_use_type: Optional[UseType], skip_campsite_types: Optional[CampsiteType]): # -> UserRequest:
         dates, camp_ids_str = request_str.split(":")
         start_date, end_date = dates.split("..")
         camp_ids: List[int] = [int(x) for x in camp_ids_str.split(",")]
-        return cls(start_date, end_date, camp_ids, only_available, no_overall, html, skip_use_type)
+        return cls(start_date, end_date, camp_ids, only_available, no_overall, html, skip_use_type, skip_campsite_types)
 
     @classmethod
     def make_user_requests(cls, requests_str: str, only_available: bool,
-                           no_overall: bool, html: bool, skip_use_type: Optional[UseType]): # -> List[UserRequest]:
+                           no_overall: bool, html: bool, skip_use_type: Optional[UseType],
+                           skip_campsite_types: Optional[CampsiteType]): # -> List[UserRequest]:
         ret: List[UserRequest] = []
         for request_str in requests_str.rstrip(";").split(";"):
-            ret.append(cls._make_user_request(request_str, only_available, no_overall, html, skip_use_type))
+            ret.append(cls._make_user_request(request_str, only_available, no_overall, html, skip_use_type, skip_campsite_types))
         return ret
 
     def get_num_available_sites(self, resp):
@@ -73,6 +113,8 @@ class UserRequest:
         dates = set(date_helper.format_date(i) for i in dates)
         for site in resp["campsites"].values():
             if self._skip_use_type and site['type_of_use'] == self._skip_use_type.name:
+                continue
+            if site["campsite_type"].upper().replace(" ", "_") in self._skip_campsite_types_names:
                 continue
             available = bool(len(site["availabilities"]))
             for date, status in site["availabilities"].items():
