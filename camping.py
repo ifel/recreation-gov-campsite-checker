@@ -71,7 +71,7 @@ if __name__ == "__main__":
             "--log",
             help="Log file",
         )
-    for sub_parser in [parser_crawl, parser_crawl_loop, parser_crawl_info]:
+    for sub_parser in [parser_crawl, parser_crawl_loop]:
         sub_parser.add_argument(
             "--only_available",
             action="store_true",
