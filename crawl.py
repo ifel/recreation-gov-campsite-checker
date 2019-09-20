@@ -7,21 +7,21 @@ import os
 import time
 import tempfile
 
-from typing import List
+from typing import List, Optional
 
 import telegram_send
-from user_request import UserRequest
+from user_request import UserRequest, UseType
 
 
 class Crawler:
     def __init__(self, request_str: str, only_available: bool, no_overall: bool, html: bool,
-                 telegram_token: str, telegram_chat_id: str):
+                 telegram_token: str, telegram_chat_id: str, skip_use_type: Optional[UseType]):
         self._logger = logging.getLogger(self.__class__.__name__)
-        self._user_requests = UserRequest.make_user_requests(request_str, only_available, no_overall, html)
+        self._user_requests = UserRequest.make_user_requests(request_str, only_available, no_overall, html, skip_use_type)
         self._telegram_config: str = self._gen_telegram_config(telegram_token, telegram_chat_id)
         self._telegram_html = html
         self._sent_into_at = datetime.datetime.fromtimestamp(0)
-        
+
 
     async def crawl_loop(self, check_freq, dont_recheck_avail_for, send_info_every) -> None:
         sleep_time: int

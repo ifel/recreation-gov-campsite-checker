@@ -11,7 +11,7 @@ from logging.handlers import RotatingFileHandler
 import date_helper
 
 import crawl
-from connection import Connection as Conn
+import user_request
 
 
 def setup_logging(level, log_file):
@@ -87,6 +87,12 @@ if __name__ == "__main__":
             action="store_true",
             help="Exit with code 0 if something is available, with 61 otherwise"
         )
+        sub_parser.add_argument(
+            "--skip_use_type",
+            default=user_request.UseType.Day.name,
+            type=user_request.UseType.validate,
+            help=f"Skip certain use types, default: '%(default)s'. Possible options: {user_request.UseType.all_names()}"
+        )
     parser_crawl_loop.add_argument(
         "--check_freq",
         type=int,
@@ -147,13 +153,15 @@ if __name__ == "__main__":
     no_overall = False
     telegram_token = ""
     telegram_chat_id = ""
+    skip_use_type = None
     if args.cmd in ["crawl", "crawl_loop"]:
         only_available = args.only_available
         no_overall = args.no_overall
+        skip_use_type = args.skip_use_type
     if args.cmd == "crawl_loop":
         telegram_token = args.telegram_token
         telegram_chat_id = args.telegram_chat_id
-    crawler = crawl.Crawler(request, only_available, no_overall, args.html, telegram_token, telegram_chat_id)
+    crawler = crawl.Crawler(request, only_available, no_overall, args.html, telegram_token, telegram_chat_id, skip_use_type)
 
     if args.cmd == "crawl":
         try:
