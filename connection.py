@@ -18,6 +18,7 @@ class Connection:
     AVAILABILITY_ENDPOINT = "/api/camps/availability/campground/"
     MAIN_PAGE_ENDPOINT = "/api/camps/campgrounds/"
     CAMP_NAMES = {}
+    CAMP_RATES = {}
 
     def __init__(self, start_date, end_date):
         self.start_date = start_date
@@ -79,6 +80,14 @@ class Connection:
         done, pending = await asyncio.wait(futures)
         return {r.result()[0]: r.result()[1] for r in done}
 
+    async def get_camp_rates(self, camp_id):
+        if camp_id not in self.CAMP_RATES.keys():
+            self.CAMP_RATES[camp_id] = await self.send_request(
+                f"https://www.recreation.gov/api/camps/campgrounds/{camp_id}/rates",
+                {}
+            )
+        return self.CAMP_RATES[camp_id]
+
     @classmethod
     async def get_camps_names(cls, camp_ids):
         futures = {cls.get_camp_name(pid) for pid in camp_ids}
@@ -92,6 +101,10 @@ class Connection:
             resp = await cls.send_request(url, {})
             cls.CAMP_NAMES[camp_id] = resp["campground"]["facility_name"]
         return camp_id, cls.CAMP_NAMES[camp_id]
+
+    @classmethod
+    def campsite_url(cls, camp_id):
+        return os.path.join(cls.BASE_URL, f"camping/campsites/{camp_id}/")
 
     @classmethod
     def camp_url(cls, camp_id):

@@ -65,6 +65,65 @@ class CampsiteType(Enum):
         return [x.name for x in cls] + [""]
 
 
+class CampsiteInfo:
+    @classmethod
+    async def create(cls, campsite_id, capacity_rating, min_num_people, max_num_people, loop, site, campsite_type, conn, camp_id):
+        myself = cls()
+        myself._logger = logging.getLogger(cls.__class__.__name__)
+        myself.campsite_id = campsite_id
+        myself.capacity_rating = capacity_rating
+        myself.min_num_people = min_num_people
+        myself.max_num_people = max_num_people
+        myself.loop = loop
+        myself.site = site
+        myself.campsite_type = campsite_type
+        myself.rate, myself.rate_str = await myself.get_rate(await conn.get_camp_rates(camp_id), conn.start_date, conn.end_date)
+        return myself
+
+    async def get_rate(self, rates, start_date, end_date):
+        rate = {}
+        ret = (0, "NaN")
+        # look for the rate structiure
+        for r in rates['rates_list']:
+            season_start = dt.strptime(r['season_start'], '%Y-%m-%dT00:00:00Z')
+            season_end = dt.strptime(r['season_end'], '%Y-%m-%dT00:00:00Z')
+            if start_date >= season_start and end_date <= season_end:
+                rate = r
+                break
+        if not rate:
+            self._logger.warning("Could not find rate")
+            return ret
+
+        key = None
+        for k, v in rate["site_type_map"].items():
+            if v == self.campsite_type:
+                key = k
+                break
+        else:
+            self._logger.warning("Could not find rate key")
+            return ret
+
+        # There are more values, never seen them non 0/none for what I'm looking for
+        s = rate["rate_map"][key]
+        if s["per_night"]:
+            ret = (s["per_night"], f"${s['per_night']}/night")
+        elif s["per_person"]:
+            ret = (s["per_person"], f"${s['per_person']}/person")
+        elif s["group_fees"]:
+            k = list(s["group_fees"].keys())[0]
+            v = s["group_fees"][k]
+            ret = (v, f"${v}/group {k}")
+        if not ret[0]:
+            self._logger.warning("Could not find rate")
+        return ret
+
+    def __str__(self):
+        return f"  - \"{self.loop}\" - {self.site}, {self.capacity_rating} {self.min_num_people}-{self.max_num_people} ppl, {self.rate_str}"
+
+    def html(self):
+        url = Connection.campsite_url(self.campsite_id)
+        return f"  - <a href=\"{url}\">\"{self.loop}\" - {self.site}</a>, {self.capacity_rating} {self.min_num_people}-{self.max_num_people} ppl, {self.rate_str}"
+
 class UserRequest:
     SUCCESS_EMOJI = "🏕"
     FAILURE_EMOJI = "❌"
@@ -104,10 +163,10 @@ class UserRequest:
             ret.append(cls._make_user_request(request_str, only_available, no_overall, html, skip_use_type, skip_campsite_types))
         return ret
 
-    def get_num_available_sites(self, resp):
+    async def get_available_sites_info(self, resp, camp_id):
         maximum = resp["count"]
 
-        num_available = 0
+        available_sites_info: List[CampsiteInfo] = []
         num_days = (self._conn.end_date - self._conn.start_date).days
         dates = [self._conn.end_date - timedelta(days=i) for i in range(1, num_days + 1)]
         dates = set(date_helper.format_date(i) for i in dates)
@@ -124,11 +183,23 @@ class UserRequest:
                     available = False
                     break
             if available:
-                num_available += 1
-                self._logger.debug("Available site {}: {}".format(num_available, json.dumps(site, indent=1)))
-        if num_available > 0:
+                available_sites_info.append(
+                    await CampsiteInfo.create(
+                        site["campsite_id"],
+                        site["capacity_rating"],
+                        site["min_num_people"],
+                        site["max_num_people"],
+                        site["loop"],
+                        site["site"],
+                        site["campsite_type"],
+                        self._conn,
+                        camp_id
+                    )
+                )
+                self._logger.debug("Available site #{}: {}".format(len(available_sites_info), json.dumps(site, indent=1)))
+        if available_sites_info:
             self.available_at = dt.now()
-        return num_available, maximum
+        return maximum, available_sites_info
 
     async def process_request(self) -> Tuple[bool, str]:
         out: List[str] = []
@@ -139,34 +210,47 @@ class UserRequest:
         camps_infos = await camps_infos_future
         camps_names = await camp_names_future
 
+        site_info_threshold = 5
+
         for camp_id in self._camp_ids:
             camp_information = camps_infos[camp_id]
             name_of_camp = camps_names[camp_id]
-            current, maximum = self.get_num_available_sites(camp_information)
-            if current:
+            maximum, available_sites_info = await self.get_available_sites_info(camp_information, camp_id)  # TODO antipattern, but it's cached
+            num_available = len(available_sites_info)
+            if available_sites_info:
                 emoji = self.SUCCESS_EMOJI
                 availabilities = True
             else:
                 emoji = self.FAILURE_EMOJI
 
-            if not self._only_available or current:
+            if not self._only_available or available_sites_info:
+                avg_pr = ":"
+                if num_available > site_info_threshold:
+                    avg_pr = f", avg price: ${sum([x.rate for x in available_sites_info if x.rate > 0])/num_available}"
                 if self._html:
                     out.append(
-                        "- {} <a href=\"{}\">{}</a> ({}): {} site(s) available out of {} site(s)".format(
+                        "- {} <a href=\"{}\">{}</a> ({}): {} site(s) available out of {} site(s){}".format(
                             emoji,
                             self._conn.camp_availability_url(camp_id),
                             name_of_camp,
                             camp_id,
-                            current,
-                            maximum
+                            num_available,
+                            maximum,
+                            avg_pr
                         )
                     )
+                    if num_available <= site_info_threshold:
+                        for site_info in available_sites_info:
+                            out.append(site_info.html())
                 else:
                     out.append(
-                        "{} {} ({}): {} site(s) available out of {} site(s)".format(
-                            emoji, name_of_camp, camp_id, current, maximum
+                        "{} {} ({}): {} site(s) available out of {} site(s){}".format(
+                            emoji, name_of_camp, camp_id, num_available, maximum, avg_pr
                         )
                     )
+                    if num_available <= site_info_threshold:
+                        for site_info in available_sites_info:
+                            out.append(str(site_info))
 
         result = ""
         if not self._no_overall:
