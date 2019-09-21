@@ -124,9 +124,11 @@ class CampsiteInfo:
         url = Connection.campsite_url(self.campsite_id)
         return f"  - <a href=\"{url}\">\"{self.loop}\" - {self.site}</a>, {self.capacity_rating} {self.min_num_people}-{self.max_num_people} ppl, {self.rate_str}"
 
+
 class UserRequest:
     SUCCESS_EMOJI = "🏕"
     FAILURE_EMOJI = "❌"
+    SITE_INFO_THRESHOLD = 5
 
     def __init__(self, start_date: str, end_date: str, camp_ids: List[int],
                  only_available: bool, no_overall: bool, html: bool, skip_use_type: Optional[UseType],
@@ -144,11 +146,12 @@ class UserRequest:
         self._logger = logging.getLogger(self.__class__.__name__)
         self._camp_names = {}
         self._skip_use_type = skip_use_type
-        self._skip_campsite_types_names: List[str] = [x.name.upper() for x in skip_campsite_types] if skip_use_type else []
+        self._skip_campsite_types_names: List[str] = [
+            x.name.upper() for x in skip_campsite_types] if skip_use_type else []
 
     @classmethod
     def _make_user_request(cls, request_str: str, only_available: bool, no_overall: bool, html: bool,
-                           skip_use_type: Optional[UseType], skip_campsite_types: Optional[CampsiteType]): # -> UserRequest:
+                           skip_use_type: Optional[UseType], skip_campsite_types: Optional[CampsiteType]):  # -> UserRequest:
         dates, camp_ids_str = request_str.split(":")
         start_date, end_date = dates.split("..")
         camp_ids: List[int] = [int(x) for x in camp_ids_str.split(",")]
@@ -157,10 +160,11 @@ class UserRequest:
     @classmethod
     def make_user_requests(cls, requests_str: str, only_available: bool,
                            no_overall: bool, html: bool, skip_use_type: Optional[UseType],
-                           skip_campsite_types: Optional[CampsiteType]): # -> List[UserRequest]:
+                           skip_campsite_types: Optional[CampsiteType]):  # -> List[UserRequest]:
         ret: List[UserRequest] = []
         for request_str in requests_str.rstrip(";").split(";"):
-            ret.append(cls._make_user_request(request_str, only_available, no_overall, html, skip_use_type, skip_campsite_types))
+            ret.append(cls._make_user_request(request_str, only_available,
+                                              no_overall, html, skip_use_type, skip_campsite_types))
         return ret
 
     async def get_available_sites_info(self, resp, camp_id):
@@ -168,7 +172,8 @@ class UserRequest:
 
         available_sites_info: List[CampsiteInfo] = []
         num_days = (self._conn.end_date - self._conn.start_date).days
-        dates = [self._conn.end_date - timedelta(days=i) for i in range(1, num_days + 1)]
+        dates = [self._conn.end_date -
+                 timedelta(days=i) for i in range(1, num_days + 1)]
         dates = set(date_helper.format_date(i) for i in dates)
         for site in resp["campsites"].values():
             if self._skip_use_type and site['type_of_use'] == self._skip_use_type.name:
@@ -196,10 +201,52 @@ class UserRequest:
                         camp_id
                     )
                 )
-                self._logger.debug("Available site #{}: {}".format(len(available_sites_info), json.dumps(site, indent=1)))
+                self._logger.debug("Available site #{}: {}".format(
+                    len(available_sites_info), json.dumps(site, indent=1)))
         if available_sites_info:
             self.available_at = dt.now()
         return maximum, available_sites_info
+
+    def _process_site_availability(self, available_sites_info: List[CampsiteInfo],
+                                   camp_id: int, name_of_camp: str, sites_num: int) -> List[str]:
+        """ Process available_sites_info and returns list of lines ready to be printed. """
+        ret: List[str] = []
+        num_available = len(available_sites_info)
+        if available_sites_info:
+            emoji = self.SUCCESS_EMOJI
+            availabilities = True
+        else:
+            emoji = self.FAILURE_EMOJI
+
+        if not self._only_available or available_sites_info:
+            avg_pr = ":"
+            if num_available > self.SITE_INFO_THRESHOLD:
+                avg_pr = f", avg price: ${sum([x.rate for x in available_sites_info if x.rate > 0])/num_available}"
+            if self._html:
+                ret.append(
+                    "- {} <a href=\"{}\">{}</a> ({}): {} site(s) available out of {} site(s){}".format(
+                        emoji,
+                        self._conn.camp_availability_url(camp_id),
+                        name_of_camp,
+                        camp_id,
+                        num_available,
+                        sites_num,
+                        avg_pr
+                    )
+                )
+                if num_available <= self.SITE_INFO_THRESHOLD:
+                    for site_info in available_sites_info:
+                        ret.append(site_info.html())
+            else:
+                ret.append(
+                    "{} {} ({}): {} site(s) available out of {} site(s){}".format(
+                        emoji, name_of_camp, camp_id, num_available, sites_num, avg_pr
+                    )
+                )
+                if num_available <= self.SITE_INFO_THRESHOLD:
+                    for site_info in available_sites_info:
+                        ret.append(str(site_info))
+        return ret
 
     async def process_request(self) -> Tuple[bool, str]:
         out: List[str] = []
@@ -210,47 +257,14 @@ class UserRequest:
         camps_infos = await camps_infos_future
         camps_names = await camp_names_future
 
-        site_info_threshold = 5
-
         for camp_id in self._camp_ids:
             camp_information = camps_infos[camp_id]
             name_of_camp = camps_names[camp_id]
-            maximum, available_sites_info = await self.get_available_sites_info(camp_information, camp_id)  # TODO antipattern, but it's cached
-            num_available = len(available_sites_info)
-            if available_sites_info:
-                emoji = self.SUCCESS_EMOJI
-                availabilities = True
-            else:
-                emoji = self.FAILURE_EMOJI
-
-            if not self._only_available or available_sites_info:
-                avg_pr = ":"
-                if num_available > site_info_threshold:
-                    avg_pr = f", avg price: ${sum([x.rate for x in available_sites_info if x.rate > 0])/num_available}"
-                if self._html:
-                    out.append(
-                        "- {} <a href=\"{}\">{}</a> ({}): {} site(s) available out of {} site(s){}".format(
-                            emoji,
-                            self._conn.camp_availability_url(camp_id),
-                            name_of_camp,
-                            camp_id,
-                            num_available,
-                            maximum,
-                            avg_pr
-                        )
-                    )
-                    if num_available <= site_info_threshold:
-                        for site_info in available_sites_info:
-                            out.append(site_info.html())
-                else:
-                    out.append(
-                        "{} {} ({}): {} site(s) available out of {} site(s){}".format(
-                            emoji, name_of_camp, camp_id, num_available, maximum, avg_pr
-                        )
-                    )
-                    if num_available <= site_info_threshold:
-                        for site_info in available_sites_info:
-                            out.append(str(site_info))
+            # TODO antipattern, but it's cached
+            sites_num, available_sites_info = await self.get_available_sites_info(camp_information, camp_id)
+            out.extend(
+                self._process_site_availability(
+                    available_sites_info, camp_id, name_of_camp, sites_num))
 
         result = ""
         if not self._no_overall:
@@ -259,10 +273,10 @@ class UserRequest:
             else:
                 tmpl = "There are no campsites available from {} to {} :(\n"
             result = tmpl.format(
-                        self._conn.start_date.strftime(date_helper.INPUT_DATE_FORMAT),
-                        self._conn.end_date.strftime(date_helper.INPUT_DATE_FORMAT),
-                    )
-                
+                self._conn.start_date.strftime(date_helper.INPUT_DATE_FORMAT),
+                self._conn.end_date.strftime(date_helper.INPUT_DATE_FORMAT),
+            )
+
         result += "\n".join(out)
         if out:
             result += "\n"

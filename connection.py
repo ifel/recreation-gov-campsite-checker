@@ -15,8 +15,8 @@ class Connection:
         'Accept-Encoding': 'identity, deflate, compress, gzip'
     }
     BASE_URL = "https://www.recreation.gov"
-    AVAILABILITY_ENDPOINT = "/api/camps/availability/campground/"
-    MAIN_PAGE_ENDPOINT = "/api/camps/campgrounds/"
+    AVAILABILITY_ENDPOINT = "api/camps/availability/campground/"
+    MAIN_PAGE_ENDPOINT = "api/camps/campgrounds/"
     CAMP_NAMES = {}
     CAMP_RATES = {}
 
@@ -63,10 +63,23 @@ class Connection:
             )
         return resp.json()
 
+    @classmethod
+    def _api_camp_url(cls, camp_id):
+        return os.path.join(cls.BASE_URL, cls.MAIN_PAGE_ENDPOINT, str(camp_id))
+
+    @classmethod
+    def _camp_rates_url(cls, camp_id):
+        return os.path.join(cls._api_camp_url(camp_id), "rates")
+
+    @classmethod
+    def _camp_avail_url(cls, camp_id):
+        return os.path.join(cls.BASE_URL, cls.AVAILABILITY_ENDPOINT, str(camp_id))
+
     async def get_camp_information(self, camp_id):
-        self._logger.debug("Querying for {} with these params: {}".format(camp_id, self.request_params))
-        url = "{}{}{}".format(self.BASE_URL, self.AVAILABILITY_ENDPOINT, camp_id)
-        camp_information = await self.send_request(url, self.request_params)
+        self._logger.debug("Querying for {} with these params: {}".format(
+            camp_id, self.request_params))
+        camp_information = await self.send_request(
+            self._camp_avail_url(camp_id), self.request_params)
         self._logger.debug(
             "Information for {}: {}".format(
                 camp_id, json.dumps(camp_information, indent=1)
@@ -83,9 +96,7 @@ class Connection:
     async def get_camp_rates(self, camp_id):
         if camp_id not in self.CAMP_RATES.keys():
             self.CAMP_RATES[camp_id] = await self.send_request(
-                f"https://www.recreation.gov/api/camps/campgrounds/{camp_id}/rates",
-                {}
-            )
+                self._camp_rates_url(camp_id), {})
         return self.CAMP_RATES[camp_id]
 
     @classmethod
@@ -97,8 +108,7 @@ class Connection:
     @classmethod
     async def get_camp_name(cls, camp_id):
         if camp_id not in cls.CAMP_NAMES:
-            url = "{}{}{}".format(cls.BASE_URL, cls.MAIN_PAGE_ENDPOINT, camp_id)
-            resp = await cls.send_request(url, {})
+            resp = await cls.send_request(cls._api_camp_url(camp_id), {})
             cls.CAMP_NAMES[camp_id] = resp["campground"]["facility_name"]
         return camp_id, cls.CAMP_NAMES[camp_id]
 
