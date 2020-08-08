@@ -250,8 +250,6 @@ class UserRequest:
 
     async def process_request(self) -> Tuple[bool, str]:
         out: List[str] = []
-        availabilities: bool = False
-
         camp_names_future = self.camp_names()
         camps_infos_future = self._conn.get_camps_information(self._camp_ids)
         camps_infos = await camps_infos_future
@@ -267,6 +265,7 @@ class UserRequest:
                     available_sites_info, camp_id, name_of_camp, sites_num))
 
         result = ""
+        availabilities: bool = bool(out)
         if not self._no_overall:
             if availabilities:
                 tmpl = "There are campsites available from {} to {}!!! \n"

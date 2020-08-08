@@ -1,4 +1,6 @@
 import asyncio
+import copy
+from dateutil.relativedelta import relativedelta
 import json
 import logging
 import os
@@ -23,17 +25,7 @@ class Connection:
     def __init__(self, start_date, end_date):
         self.start_date = start_date
         self.end_date = end_date
-        self._request_params = None
         self._logger = logging.getLogger(self.__class__.__name__)
-
-    @property
-    def request_params(self):
-        if not self._request_params:
-            self._request_params = {
-                "start_date": date_helper.format_date(self.start_date),
-                "end_date": date_helper.format_date(self.end_date)
-            }
-        return self._request_params
 
     @classmethod
     def get_session(cls):
@@ -72,14 +64,44 @@ class Connection:
         return os.path.join(cls._api_camp_url(camp_id), "rates")
 
     @classmethod
-    def _camp_avail_url(cls, camp_id):
-        return os.path.join(cls.BASE_URL, cls.AVAILABILITY_ENDPOINT, str(camp_id))
+    def _camp_avail_url(cls, camp_id, month_date):
+        return os.path.join(cls.BASE_URL, cls.AVAILABILITY_ENDPOINT, str(camp_id), "month")
+
+    def diff_month(self, start_date, end_date):
+        return (end_date.year - start_date.year) * 12 + end_date.month - start_date.month
+
+    async def get_camp_information_month(self, camp_id, month_date):
+        request_params = {
+            "start_date": date_helper.format_date_request(month_date),
+        }
+        self._logger.debug(
+            f"Querying for {camp_id} with these params: {request_params}")
+        camp_information = await self.send_request(
+            self._camp_avail_url(camp_id, month_date), request_params
+        )
+        return camp_information
 
     async def get_camp_information(self, camp_id):
-        self._logger.debug("Querying for {} with these params: {}".format(
-            camp_id, self.request_params))
-        camp_information = await self.send_request(
-            self._camp_avail_url(camp_id), self.request_params)
+        months = self.diff_month(self.start_date, self.end_date) + 1
+        tasks = []
+        for i in range(months):
+            start_of_month = (self.start_date +
+                              relativedelta(months=i)).replace(day=1)
+            tasks.append(asyncio.create_task(
+                self.get_camp_information_month(camp_id, start_of_month)))
+        infos = await asyncio.gather(*tasks)
+        camp_information = {}
+        for info in infos:
+            if not camp_information:
+                camp_information = copy.deepcopy(info)
+                continue
+            for campsite_id, campsite_infos in info["campsites"].items():
+                if campsite_id not in camp_information["campsites"]:
+                    camp_information["campsites"][campsite_id] = campsite_infos
+                else:
+                    camp_information["campsites"][campsite_id]["availabilities"].update(
+                        campsite_infos["availabilities"])
+        camp_information["count"] = len(camp_information["campsites"])
         self._logger.debug(
             "Information for {}: {}".format(
                 camp_id, json.dumps(camp_information, indent=1)
