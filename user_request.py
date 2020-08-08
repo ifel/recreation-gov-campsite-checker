@@ -174,7 +174,6 @@ class UserRequest:
         num_days = (self._conn.end_date - self._conn.start_date).days
         dates = [self._conn.end_date -
                  timedelta(days=i) for i in range(1, num_days + 1)]
-        dates = set(date_helper.format_date(i) for i in dates)
         for site in resp["campsites"].values():
             if self._skip_use_type and site['type_of_use'] == self._skip_use_type.name:
                 continue
@@ -182,7 +181,7 @@ class UserRequest:
                 continue
             available = bool(len(site["availabilities"]))
             for date, status in site["availabilities"].items():
-                if date not in dates:
+                if date_helper.date_from_str(date) not in dates:
                     continue
                 if status != "Available":
                     available = False

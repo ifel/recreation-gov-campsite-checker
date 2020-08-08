@@ -3,15 +3,21 @@ from datetime import datetime
 
 
 INPUT_DATE_FORMAT = "%Y-%m-%d"
+RESPONSE_DATE_FORMAT = "%Y-%m-%dT00:00:00Z"
+REQUEST_DATE_FORMAT = "%Y-%m-%dT00:00:00.000Z"
 
 
 def format_date(date_object):
-    date_formatted = datetime.strftime(date_object, "%Y-%m-%dT00:00:00Z")
+    date_formatted = datetime.strftime(date_object, RESPONSE_DATE_FORMAT)
     return date_formatted
 
 
+def date_from_str(date_formatted):
+    return datetime.strptime(date_formatted, RESPONSE_DATE_FORMAT)
+
+
 def format_date_request(date_object):
-    date_formatted = datetime.strftime(date_object, "%Y-%m-%dT00:00:00.000Z")
+    date_formatted = datetime.strftime(date_object, REQUEST_DATE_FORMAT)
     return date_formatted
 
 
