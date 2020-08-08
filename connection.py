@@ -108,12 +108,12 @@ class Connection:
             )
         )
 
-        return camp_id, camp_information
+        return camp_information
 
     async def get_camps_information(self, camp_ids):
         futures = {self.get_camp_information(pid) for pid in camp_ids}
-        done, pending = await asyncio.wait(futures)
-        return {r.result()[0]: r.result()[1] for r in done}
+        res = await asyncio.gather(*futures)
+        return dict(zip(camp_ids, res))
 
     async def get_camp_rates(self, camp_id):
         if camp_id not in self.CAMP_RATES.keys():
@@ -124,15 +124,15 @@ class Connection:
     @classmethod
     async def get_camps_names(cls, camp_ids):
         futures = {cls.get_camp_name(pid) for pid in camp_ids}
-        done, pending = await asyncio.wait(futures)
-        return {r.result()[0]: r.result()[1] for r in done}
+        res = await asyncio.gather(*futures)
+        return dict(zip(camp_ids, res))
 
     @classmethod
     async def get_camp_name(cls, camp_id):
         if camp_id not in cls.CAMP_NAMES:
             resp = await cls.send_request(cls._api_camp_url(camp_id), {})
             cls.CAMP_NAMES[camp_id] = resp["campground"]["facility_name"]
-        return camp_id, cls.CAMP_NAMES[camp_id]
+        return cls.CAMP_NAMES[camp_id]
 
     @classmethod
     def campsite_url(cls, camp_id):

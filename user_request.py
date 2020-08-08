@@ -1,3 +1,4 @@
+import asyncio
 import argparse
 import json
 import logging
@@ -249,10 +250,12 @@ class UserRequest:
 
     async def process_request(self) -> Tuple[bool, str]:
         out: List[str] = []
-        camp_names_future = self.camp_names()
-        camps_infos_future = self._conn.get_camps_information(self._camp_ids)
-        camps_infos = await camps_infos_future
-        camps_names = await camp_names_future
+        camps_infos, camps_names = await asyncio.gather(
+            *[
+                self._conn.get_camps_information(self._camp_ids),
+                self.camp_names()
+            ]
+        )
 
         for camp_id in self._camp_ids:
             camp_information = camps_infos[camp_id]
