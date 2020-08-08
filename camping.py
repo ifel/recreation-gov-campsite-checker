@@ -16,12 +16,14 @@ import user_request
 
 def setup_logging(level, log_file):
     if log_file:
-        handler = RotatingFileHandler(log_file, maxBytes=10*1024*1024, backupCount=10)
+        handler = RotatingFileHandler(
+            log_file, maxBytes=10*1024*1024, backupCount=10)
     else:
         handler = logging.StreamHandler()
 
     handler.setFormatter(
-        logging.Formatter("[%(asctime)s] %(levelname)s [%(name)s.%(funcName)s:%(lineno)d] %(message)s")
+        logging.Formatter(
+            "[%(asctime)s] %(levelname)s [%(name)s.%(funcName)s:%(lineno)d] %(message)s")
     )
 
     root_logger = logging.getLogger()
@@ -37,8 +39,10 @@ if __name__ == "__main__":
     parser_crawl_info = subparsers.add_parser("crawl_info")
 
     for sub_parser in [parser_crawl, parser_crawl_loop, parser_crawl_info]:
-        sub_parser.add_argument("--debug", "-d", action="store_true", help="Debug log level")
-        sub_parser.add_argument("--quiet", "-q", action="store_true", help="Warning log level")
+        sub_parser.add_argument(
+            "--debug", "-d", action="store_true", help="Debug log level")
+        sub_parser.add_argument(
+            "--quiet", "-q", action="store_true", help="Warning log level")
         sub_parser.add_argument(
             "--start-date", help="Start date [YYYY-MM-DD]", type=date_helper.valid_date
         )
@@ -59,7 +63,7 @@ if __name__ == "__main__":
         sub_parser.add_argument(
             "--request",
             help="Struct of requests as: start_date1..end_date1:id1,id2;start_date2..end_date2:id3,id4 \n" +
-                "Dates should be in format YYYY-MM-DD. End date - you expect to leave this day, not stay the night"
+            "Dates should be in format YYYY-MM-DD. End date - you expect to leave this day, not stay the night"
         )
         sub_parser.add_argument(
             "--html",
@@ -147,7 +151,8 @@ if __name__ == "__main__":
 
     request = ""
     if args.request and args.camps:
-        raise ValueError("You try to use request and camps methods both, you should chose one")
+        raise ValueError(
+            "You try to use request and camps methods both, you should chose one")
     if args.request:
         if args.start_date:
             logger.warning("start_date does not make sense for the request")
@@ -179,7 +184,8 @@ if __name__ == "__main__":
     if args.cmd == "crawl_loop":
         telegram_token = args.telegram_token
         telegram_chat_id = args.telegram_chat_id
-    crawler = crawl.Crawler(request, only_available, no_overall, args.html, telegram_token, telegram_chat_id, skip_use_type, skip_campsite_types)
+    crawler = crawl.Crawler(request, only_available, no_overall, args.html,
+                            telegram_token, telegram_chat_id, skip_use_type, skip_campsite_types)
 
     if args.cmd == "crawl":
         try:
@@ -192,7 +198,8 @@ if __name__ == "__main__":
     elif args.cmd == "crawl_loop":
         try:
             availabilities = asyncio.run(
-                crawler.crawl_loop(args.check_freq, args.dont_recheck_avail_for, args.send_info_every)
+                crawler.crawl_loop(
+                    args.check_freq, args.dont_recheck_avail_for, args.send_info_every)
             )
             if args.exit_code:
                 sys.exit(0 if availabilities else 61)

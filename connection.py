@@ -1,10 +1,10 @@
 import asyncio
+import aiohttp
 import copy
 from dateutil.relativedelta import relativedelta
 import json
 import logging
 import os
-import requests
 from fake_useragent import UserAgent
 
 import date_helper
@@ -30,30 +30,23 @@ class Connection:
     @classmethod
     def get_session(cls):
         if not cls.SESSION:
-            cls.SESSION = requests.session()
+            cls.SESSION = aiohttp.ClientSession(headers=cls.HEADERS)
             if not cls.SESSION:
                 raise RuntimeError('Could not create session object')
-            cls.SESSION.mount(
-                'https://',
-                requests.adapters.HTTPAdapter(
-                    pool_connections=10,
-                    pool_maxsize=200,
-                    max_retries=3
-                )
-            )
         return cls.SESSION
 
     @classmethod
     async def send_request(cls, url, params):
-        resp = cls.get_session().get(url, params=params, headers=cls.HEADERS)
-        if resp.status_code != 200:
-            raise RuntimeError(
-                "failedRequest",
-                "ERROR, {} code received from {}: {}".format(
-                    resp.status_code, url, resp.text
-                ),
-            )
-        return resp.json()
+        async with cls.get_session().get(url, params=params) as resp:
+            if resp.status != 200:
+                text = await resp.text()
+                raise RuntimeError(
+                    "failedRequest",
+                    "ERROR, {} code received from {}: {}".format(
+                        resp.status, url, text
+                    ),
+                )
+            return await resp.json()
 
     @classmethod
     def _api_camp_url(cls, camp_id):
