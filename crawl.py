@@ -28,6 +28,7 @@ class Crawler:
     async def crawl_loop(self, check_freq, dont_recheck_avail_for, send_info_every) -> None:
         sleep_time: int
         while True:
+            start_time = datetime.datetime.now()
             if self._sent_into_at < datetime.datetime.now() - datetime.timedelta(hours=send_info_every):
                 self._logger.info("Time to get search info")
                 await self.crawl_info()
@@ -35,6 +36,10 @@ class Crawler:
             self._logger.info("Getting availabilities")
             availabilities = await self.crawl(dont_recheck_avail_for)
             sleep_time = check_freq
+            end_time = datetime.datetime.now()
+            time_diff = end_time - start_time
+            self._logger.debug(
+                f"Crawler loop took {time_diff.seconds}.{time_diff.microseconds} seconds")
             self._logger.debug(
                 f"Sleeping for {sleep_time} seconds before the next iteration")
             time.sleep(sleep_time)
