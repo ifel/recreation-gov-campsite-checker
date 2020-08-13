@@ -45,6 +45,7 @@ class CampsiteType(Enum):
     HIKE_TO = auto()
     GROUP_STANDARD_NONELECTRIC = auto()
     BOAT_IN = auto()
+    EQUESTRIAN_NONELECTRIC = auto()
 
     @classmethod
     def validate_multi(cls, v):

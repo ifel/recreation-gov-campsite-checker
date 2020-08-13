@@ -106,6 +106,7 @@ if __name__ == "__main__":
             user_request.CampsiteType.HIKE_TO,
             user_request.CampsiteType.GROUP_STANDARD_NONELECTRIC,
             user_request.CampsiteType.BOAT_IN,
+            user_request.CampsiteType.EQUESTRIAN_NONELECTRIC,
         ]
         sub_parser.add_argument(
             "--skip_campsite_types",
