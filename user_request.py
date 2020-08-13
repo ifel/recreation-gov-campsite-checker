@@ -173,21 +173,16 @@ class UserRequest:
 
         available_sites_info: List[CampsiteInfo] = []
         num_days = (self._conn.end_date - self._conn.start_date).days
-        dates = [self._conn.end_date -
-                 timedelta(days=i) for i in range(1, num_days + 1)]
+        dates = {self._conn.end_date -
+                 timedelta(days=i) for i in range(1, num_days + 1)}
         for site in resp["campsites"].values():
             if self._skip_use_type and site['type_of_use'] == self._skip_use_type.name:
                 continue
             if site["campsite_type"].upper().replace(" ", "_") in self._skip_campsite_types_names:
                 continue
-            available = bool(len(site["availabilities"]))
-            for date, status in site["availabilities"].items():
-                if date_helper.date_from_str(date) not in dates:
-                    continue
-                if status != "Available":
-                    available = False
-                    break
-            if available:
+            available_dates = {date_helper.date_from_str(
+                date) for date, status in site["availabilities"].items() if status == "Available"}
+            if dates.issubset(available_dates):
                 available_sites_info.append(
                     await CampsiteInfo.create(
                         site["campsite_id"],
