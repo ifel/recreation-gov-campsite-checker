@@ -104,7 +104,7 @@ class Connection:
         return camp_information
 
     async def get_camps_information(self, camp_ids):
-        futures = {self.get_camp_information(pid) for pid in camp_ids}
+        futures = [self.get_camp_information(pid) for pid in camp_ids]
         res = await asyncio.gather(*futures)
         return dict(zip(camp_ids, res))
 
@@ -116,7 +116,7 @@ class Connection:
 
     @classmethod
     async def get_camps_names(cls, camp_ids):
-        futures = {cls.get_camp_name(pid) for pid in camp_ids}
+        futures = [cls.get_camp_name(pid) for pid in camp_ids]
         res = await asyncio.gather(*futures)
         return dict(zip(camp_ids, res))
 
