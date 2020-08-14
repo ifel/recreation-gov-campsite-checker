@@ -92,8 +92,20 @@ class Crawler:
     async def _send_to_telegram_or_print(self, message: str):
         if self._telegram_config:
             self._logger.debug("Sending a message to telegram chat")
+            if len(message) < 4096:
+                messages = [message]
+            else:
+                lines = message.splitlines()
+                message = ""
+                messages = []
+                for line in lines:
+                    if len(message) + len(line) + 2 >= 4096:
+                        messages.append(message)
+                        message = ""
+                    message += f"\n{line}"
+                messages.append(message)
             telegram_send.send(
-                messages=[message],
+                messages=messages,
                 conf=self._telegram_config,
                 parse_mode="html" if self._telegram_html else "text"
             )
