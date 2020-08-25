@@ -174,8 +174,7 @@ class UserRequest:
 
         available_sites_info: List[CampsiteInfo] = []
         num_days = (self._conn.end_date - self._conn.start_date).days
-        dates = {self._conn.end_date -
-                 timedelta(days=i) for i in range(1, num_days + 1)}
+        dates = {self._conn.end_date - timedelta(days=i) for i in range(num_days)}
         for site in resp["campsites"].values():
             if self._skip_use_type and site['type_of_use'] == self._skip_use_type.name:
                 continue
